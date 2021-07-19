@@ -1,0 +1,358 @@
+\documentclass[letterpaper,12pt]{article}
+
+%-----------------------------------------------------------
+% Packages
+%-----------------------------------------------------------
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amstext}
+\usepackage{array}
+\usepackage{subfigure}
+\usepackage{color}
+\usepackage{listings}
+\usepackage[framed]{mcode}
+\usepackage{caption}
+%-----------------------------------------------------------
+
+
+%-----------------------------------------------------------
+% Report dimensions
+%-----------------------------------------------------------
+\addtolength{\oddsidemargin}{-.875in}
+\addtolength{\evensidemargin}{-.875in}
+\addtolength{\textwidth}{1.75in} \addtolength{\topmargin}{-.875in}
+\addtolength{\textheight}{1.75in} \special
+{papersize=\the\paperwidth,\the\paperheight}
+%-----------------------------------------------------------
+
+\begin{document}
+
+\begin{table}[h]
+\begin{tabular}{m{2.5in}m{0.15in}m{3.95in}}
+  \includegraphics[width=2.5in,keepaspectratio=true]{images/logo.eps} &
+  {} &
+  \begin{tabular}{c}
+    {\large ECE3311 -- Principles of Communication} \\
+    \vspace*{2mm}{\large Systems}\\
+    \vspace*{2mm}{\normalsize Project~01}\\
+    {\normalsize Due: 5:00 PM, Tuesday 6 November 2017}
+  \end{tabular}\\
+  \hline
+\end{tabular}
+\end{table}
+
+\section{Project Objective \& Learning Outcomes}
+
+The objective of this project is to introduce computer simulation tools and techniques for the modeling and analysis of baseband transmission waveforms.
+
+From this project, it is expected that the following learning outcomes are achieved:
+\begin{itemize}
+ \item Obtain an understanding of how continuous analog waveforms can be sampled and transformed into discrete and digital signals.
+ \item Master the conversion of analog waveforms into binary strings via the pulse coded modulation (PCM) process.
+ \item Establish competency in constructing various line codes and experiment with them in a computer simulation environment.
+ \item Gain proficiency in using the eye diagram tool as a form of understanding the temporal behavior of pulse shapes used in a transmission.
+ \item Observe and demonstrate the impact of the digitization and recreation of analog waveforms via the conversion of an audio file to a digital format and then converted back to an audio file.
+\end{itemize}
+
+
+\section{Preparations}\label{s:prep}
+
+The first step in this project is to understand some of the basics with respect to representing analog waveforms in a computer 
+simulation environment.  Since everything in a computer simulation environment is digital, we need to model digital signals to ``appear''
+as close to analog as possible.  One way of achieving this is by representing a specific analog waveform using a substantial amount of 
+discrete samples.  In the following MATLAB code, we do exactly this by modeling the signal \texttt{analog\_wavefm} as a sequence of numerous
+discrete samples.  We also do this with the train of rectangular pulses \texttt{impulsetrain\_wavefm}.
+\begin{figure}[h]
+\centering
+\begin{minipage}[framed]{0.9\textwidth}
+\begin{lstlisting}
+% Generate a discrete version of a random continuous analog
+% waveform using a Uniform Random Number Generator and
+% an interpolation function to smooth out the result
+analog_wavefm = interp((2*rand(1,(L/M))-1),M);
+
+% Generate a rectangular pulse train of samples
+impulsetrain_wavefm = reshape(ones(N,1)*rem(1:1:(L/N),2),[1,L]);
+\end{lstlisting}
+\end{minipage}
+\captionsetup{labelformat=empty}
+\end{figure}
+
+These two waveforms are going to be very useful for us throughout the rest of this project, especially when we want to model analog waveforms and
+conduct experiments on them that represent some of the digital operations discussed in the course.  For instance, if we look at Figure~\ref{f:p1_basics}, we
+can observe some of the ``analog'' waveforms created by the MATLAB code above.  Let us see how this is used in the next several sections.
+\begin{figure}[h]
+ \centering
+ \includegraphics{./images/p1_basics.eps}
+ \caption{Examples of a randomly generated analog waveform (top) and a periodic stream of rectangular pulses (bottom).}\label{f:p1_basics}
+\end{figure}
+
+Before continuing forward, note that throughout this project you should be using the following simulation parameters.
+\begin{figure}[h]
+\centering
+\begin{minipage}[framed]{0.9\textwidth}
+\begin{lstlisting}
+L = 100;  % Length of the overall transmission
+N = 10;   % Pulse duration for rectangular pulse train
+M = 10;   % Upsampling factor for generating analog waveform
+L_lc = 20;% Line coding pulse duration
+\end{lstlisting}
+\end{minipage}
+\captionsetup{labelformat=empty}
+\end{figure}
+
+Note that MATLAB is heavily optimized for matrix operations, and many of the built-in functions are compiled code, which means using these features will signficantly speed up your computer simulations.  If you use something like a \texttt{for} loop or similar, you will begin to lose the benifits of those accelerated features.  Consequently, when in doubt always vectorize.
+
+\section{Pulse Amplitude Modulation}
+
+The first computer experiment that we will be performing is the generation of pulse amplitude modulation (PAM) waveforms. There are two types of PAM waveforms: naturally sampled PAM and flat-top PAM.
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{ACTION (5 Points)}: Using the MATLAB code presented in Section~\ref{s:prep}, please obtain the naturally sampled PAM waveform and flat-top sampling PAM waveform of a random analog baseband signal.  If done correctly, your two stem plots should appear to be similar to those shown in Figure~\ref{f:p1_pam}
+\end{minipage}
+} 
+
+
+\begin{figure}[h]
+ \centering
+ \includegraphics{./images/p1_pam.eps}
+ \caption{Examples of a naturally sampled PAM waveform (top) and a flat-top sampling PAM waveform (bottom).}\label{f:p1_pam}
+\end{figure}
+
+\section{Pulse Coded Modulation}
+\label{sec:pcm}
+
+Now that you are comfortable with manipulating analog waveforms in the MATLAB simulation environment, let us take another analog waveform and convert it into a pulse coded modulation (PCM) waveform.  To achieve this, we
+are going to need to perform an operation known as \textit{quantization}, where we round samples of a waveform to the nearest value defined by a codebook that has a binary codeword representation for that value.  In MATLAB, there
+is a useful function for quantization called \texttt{quantiz}. For this section, you will be using the following MATLAB code for quantizing your analog waveform.
+\begin{figure}[h]
+\centering
+\begin{minipage}[framed]{0.9\textwidth}
+\begin{lstlisting}
+[ind,quantv] = quantiz(downsample(analog_wavefm,N),...
+[-0.8 -0.6 -0.4 -0.2 0 0.2 0.4 0.6 0.8],...
+[-0.9 -0.7 -0.5 -0.3 -0.1 0.1 0.3 0.5 0.7 0.9]);
+\end{lstlisting}
+\end{minipage}
+\captionsetup{labelformat=empty}
+\end{figure}
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{ACTION (10 Points)}: Using this quantizer, please plot the original analog waveform, the PCM version of it, and the associated quantization error such that you produce results that appear similar to Figure~\ref{f:p1_pcm}. Since the purpose of the PCM waveform is to ultimately convert an analog signal into a string of binary values, define the binary values associated with each PCM amplitude value.  Please
+include this mapping in your project report.  Print out the binary outputs for the PCM words generated by your computer experiment. 
+\end{minipage}
+} 
+
+
+\begin{figure}[h]
+ \centering
+ \includegraphics{./images/p1_pcm.eps}
+ \caption{Examples of a quantized analog waveform (top) and the residual quantization error after converting it into a PCM waveform (bottom).}\label{f:p1_pcm}
+\end{figure}
+\bigskip
+
+
+\section{Line Coding}
+
+Line codes exist everywhere, especially in legacy systems that possess some sort of baseband digital information exchange, \textit{e.g.}, automotive CAN Bus messages. The purpose of this section
+is to introduce you to these codes and enable you to generate them in a computer simulation environment. As a starting point, the following MATLAB code will generate unipolar non-return to zero (NRZ) waveforms
+for a random binary sequence.
+\begin{figure}[h]
+\centering
+\begin{minipage}[framed]{0.9\textwidth}
+\begin{lstlisting}
+% Generate your own line codes for the binary string `11001100'
+bin_str = [1 1 0 1 0 0 1 0];
+upnrz1 = ones(1,L_lc);
+upnrz0 = zeros(1,L_lc);
+upnrz_wavefm = [];
+for ind = 1:1:length(bin_str),
+    if (bin_str(ind) == 1)
+        upnrz_wavefm = [upnrz_wavefm upnrz1];
+    else
+        upnrz_wavefm = [upnrz_wavefm upnrz0];
+    end;
+end;
+\end{lstlisting}
+\end{minipage}
+\captionsetup{labelformat=empty}
+\end{figure}
+
+As you can see, although a \texttt{for} loop was used in the generate of the string of unipolar NRZ pulses, the pulse shapes themselves were vectorized using the convenient \texttt{ones} and \texttt{zeros} functions.
+
+
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{ACTION (5 Points)}: Using this 
+code, as well as other similar implementations, examples of line codes using unipolar NRZ, polar NRZ, unipolar RZ, bipolar RZ, and Manchester NRZ pulse shapes we generated in Figure~\ref{f:p1_linecode}.  For this section,
+please, derived these same examples yourself using a randomly generated binary string (do not use the binary string used in this example).
+\end{minipage}
+} 
+
+
+ 
+\begin{figure}[h]
+ \centering
+ \includegraphics{./images/p1_linecode.eps}
+ \caption{Examples of line coding techniques (from top to bottom): Unipolar NRZ, Polar NRZ, Unipolar RZ, Bipolar RZ, Manchester NRZ.}\label{f:p1_linecode}
+\end{figure}
+
+\section{Eye Diagrams}
+
+A very powerful tool when analyzing a transmission for various forms of distortion is the eye diagram.  The eye diagram can tell use how much noise and interference is present within a transmission, as well as if our reception of 
+the transmission is out-of-sync, \textit{e.g.}, timing issues.  In this section, we will learn how to use the MATLAB \texttt{eyediagram} tool, which is shown in the following example for analyzing a unipolar NRZ waveform.
+\begin{figure}[h]
+\centering
+\begin{minipage}[framed]{0.9\textwidth}
+\begin{lstlisting}
+% Generate unipolar waveform
+rand_bin_str = round(rand(1,L));
+new_upnrz_wavefm = [];
+for ind = 1:1:length(rand_bin_str),
+    if (rand_bin_str(ind) == 1)
+        new_upnrz_wavefm = [new_upnrz_wavefm upnrz1];
+    else
+        new_upnrz_wavefm = [new_upnrz_wavefm upnrz0];
+    end;
+end;
+
+% Visualize
+eyediagram(new_upnrz_wavefm,L_lc,L_lc,L_lc/2);
+\end{lstlisting}
+\end{minipage}
+\captionsetup{labelformat=empty}
+\end{figure}
+
+As you can see, the \texttt{eyediagram} tool traces both pulses generated from transmitting ones and zeros into a single plot, which is shown in Figure~\ref{f:p1_eyediag_upnrz}.  Thus, we are overlapping the pulses 
+every pulse period in order to observe any deviations in the pulse shape characteristics.  Also included in this section is the eye diagram for the Manchester NRZ pulse shape, which is shown in Figure~\ref{f:p1_eyediag_mnrz}.
+
+\begin{figure}[h]
+ \centering
+ \subfigure[Unipolar NRZ.]{
+ \includegraphics[width=0.35\linewidth,keepaspectratio=true]{./images/p1_eyediag_upnrz.eps}
+ \label{f:p1_eyediag_upnrz}
+ }
+\subfigure[Manchester NRZ.]{
+ \includegraphics[width=0.35\linewidth,keepaspectratio=true]{./images/p1_eyediag_mnrz.eps}
+ \label{f:p1_eyediag_mnrz}
+ }\\
+ \caption{Examples of an eye diagram for various pulse shapes.}\label{f:p1_eyediags}
+\end{figure}
+
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{ACTION (10 Points)}: For this section, please obtain all eye diagrams for unipolar NRZ, polar NRZ, unipolar RZ, bipolar RZ, and Manchester NRZ pulse shapes. Furthermore, please provide at least a paragraph of explanation for each pulse shape regarding why we are observing these eye diagrams.
+\end{minipage}
+} 
+
+\section{Bringing It All Together}
+
+\textbf{IT IS SUGGESTED TO KEEP YOUR VOLUME LOW IN THIS SECTION, ESPECIALLY IF YOU HAVE HEADPHONES. Some sounds will be purposly loud or metallic. You can always turn the volume up if you can't hear the sound file}. Let's look at three real sound files taken from popular Vines (typically 7 second videos exchanged on social media platforms). Three .wav sound files are presented, each looking like Figure~\ref{f:raw} upon import to MATLAB. Each file is modulated to a flat-top PAM waveform in the form:
+
+\begin{figure}[h]
+\centering
+\begin{minipage}[framed]{0.9\textwidth}
+\begin{lstlisting}
+[raw_file, Fs] = audioread('./file_name.wav');
+L = length(raw_file); % Length of the overall transmission
+N = 2; % downsample/upsample rate
+
+% encode the waveforms
+impulsetrain = reshape(ones(N,1)*rem(1:1:(L/N),2),[L,1]);
+
+natural_pam = raw_file .* impulsetrain;
+flattop_pam = repelem(natural(1:N:end), N);
+\end{lstlisting}
+\end{minipage}
+\captionsetup{labelformat=empty}
+\end{figure}
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{QUESTION (5 Points)}: What impact would increasing $N$ (downsampling/upsampling rate) have on the quality of the recovered sound file after decoding the binary stream? Identify which one of the mystery sound files has (very high) $N=32$.
+\end{minipage}
+} 
+
+\begin{figure}[h]
+ \centering
+ \includegraphics{./images/raw_file.eps}
+ \caption{One of the raw sound files brought into MATLAB using audioread. Vmin is about -1 and Vmax is about 0.8.}\label{f:raw}
+\end{figure}
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{QUESTION (5 Points)}: In Section 4, the number of audio levels (10) is insufficient for quality sound. What effect would having a low number of amplitudes have on the sound file? Identify which one of the mystery sound files has (very few) 8 amplitudes. Which sound file has a high number of amplitudes and a low $N$?
+\end{minipage}
+} 
+
+Each sound file is encoded to single binary row vector of codewords of unkown lengths. $2^C$ evenly spaced amplitdue values from $Vmin$ to $Vmax$ make up the code book, with partitions fill the space inbetween them. Using the quantiz() function, the flattop pam waveform is quantized into a PCM. A dictionary of binary assignments is then created such that for $C=2$, $|Vmax|=|Vmin|=1$, $binary assignments = [00 01 10 11]$. In this case, if we were to decode this binary stream, we would map sequential 0s to the amplitude $Vmin$ for $N$ values, or $Vmin/2$ for 0s followed by a 1, or $Vmax/2$ for 1s followed by a 0, or $Vmax$ for double 1s. 
+
+\begin{figure}[h]
+\centering
+\begin{minipage}[framed]{0.9\textwidth}
+\begin{lstlisting}
+Vmax = max(raw_file);
+Vmin = min(raw_file);
+codes = 2^C; % number of codes in the codebook
+
+% 2^C amplitude values ranging from Vmin to Vmax
+codebook = linspace(Vmin, Vmax, codes);
+partition = linspace(Vmin+abs(codebook(2)-codebook(1)), Vmax, codes-1);
+[index,quant_file] = quantiz(flattop,partition,codebook); % Quantize.
+
+% Convert to binary where Vmax is all zero, -Vmax is all 1, and each
+% descending value increments the least sig bit
+binary_stream = zeros(1, L/N*2);
+% remove length-n zero-value segments..they're not in our codebook!
+nz_encoded = quant_file(quant_file ~= 0);
+binary_assignments = de2bi(linspace(0,codes-1,codes));
+
+% Map amplitudes to binary using the binary_assignments and codebook
+for i=1:length(nz_encoded)
+    curr_assign = (nz_encoded(i) == codebook);
+    binary_stream(1+(i-1)*log2(codes):i*log2(codes)) = ...
+        binary_assignments(curr_assign,1:end);
+end
+\end{lstlisting}
+\end{minipage}
+\captionsetup{labelformat=empty}
+\end{figure}
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{ACTION (20 Points)}: For $C=10$, $N=2$, and the provided binary streams $binary\_stream\_1,2,3.m$, form a codebook, partitions, a list of binary assignments, and map the binary to repeated amplitude values.
+\end{minipage}
+} 
+
+
+
+
+
+
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{QUESTION (5 Points)}: Try playing your recovered sound file using MATLAB's sound(file, Fs) function. What effect does varying the sample rate $Fs$ have on the sound file?
+\end{minipage}
+} 
+
+\section{Final Report Format \& Content}
+
+Each experiment report should possess the following format:
+\begin{itemize}
+ \item A cover page (2 points) that includes the course number, project number, names and WPI ID numbers, submission date.
+ \item A narrative (10 points) of the process taken during this experiment and the experiences encountered by the student.  Figures, plots, schematics, diagrams, snippets of source code, and other visuals are highly encouraged.
+ \item Responses to all questions indicated in the project handout.   Please make sure that the responses are of sufficient detail.
+ \item A summary (5 points) that contains all lessons learned from this project.
+ \item All source code (5 points) generated (as an appendix).
+\end{itemize}
+
+This single document must be electronically submitted in {\bf PDF format} (no other formats will be accepted) via the ECE3311 CANVAS website by the due date. Failure to submit this report by the specified due date and time will result in a grade of ``0\%''.
+
+
+\end{document}

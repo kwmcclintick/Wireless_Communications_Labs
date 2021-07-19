@@ -1,0 +1,389 @@
+% Style file for LaTeX2e
+%
+% Experiment instructions for use with documentclass report
+%  - bibliography is set as a section
+%  - page numbers reset for each experiment
+
+% $Id: Experiment.sty,v 1.13 1998/10/22 23:18:05 kabal Exp $
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{Experiment}[1997/01/17]
+
+\newif\if@fancyhdr
+\DeclareOption{fancyhdr}{\@fancyhdrtrue}
+\DeclareOption{plainhdr}{\@fancyhdrfalse}
+
+\ExecuteOptions{fancyhdr}
+\ProcessOptions
+
+%================== University logo
+\RequirePackage{McGillLogo}
+\def\Hlogo{%
+  \hbox {%
+    \raisebox{-0.25in}{\McGillCrest {!}{0.75in}}%
+    \Large
+    \hskip 0.6em
+    \vbox{\halign{##\hss\cr
+                  Department of Electrical \& Computer Engineering\cr
+              McGill University\cr}}}}
+
+%================== Page layout
+\newdimen \insidemargin
+\newdimen \outsidemargin
+\newdimen \abovemargin
+\newdimen \belowmargin
+
+% The page layout is defined by 4 dimensions, others are calculated from these
+% Define the side margins for a right-side page
+\insidemargin = 1.3in       % Actual space
+\outsidemargin = 0.9in
+
+% Above margin is space above the header
+% Below margin is space below footer
+\abovemargin = 1.1in        % Actual space
+\belowmargin = 0.5in
+%=====
+
+% Leave more space for the header (originally 12pt)
+\headheight = 15pt
+
+% Other parameters retain their default values (values for 12pt documents)
+% \headsep - space from bottom of header to top of text (25pt)
+% \footskip - distance from the bottom of text to bottom of footer (30pt)
+
+% The rest of the dimenstions are calculated from the above values
+% (compensation for TeX 1in margin offsets is done here)
+\textwidth = \paperwidth
+  \advance\textwidth by -\insidemargin
+  \advance\textwidth by -\outsidemargin
+\textheight = \paperheight
+  \advance \textheight by -\abovemargin
+  \advance \textheight by -\headheight
+  \advance \textheight by -\headsep
+  \advance \textheight by -\belowmargin
+  \advance \textheight by -\footskip
+\topmargin = \abovemargin
+  \advance \topmargin by -1in
+
+\oddsidemargin = \insidemargin
+  \advance\oddsidemargin by -1in
+\if@twoside
+  \evensidemargin = \outsidemargin
+    \advance\evensidemargin by -1in
+\else
+  \evensidemargin = \oddsidemargin
+\fi
+
+%========= Redefine \cleardoublepage to use pagestyle empty
+% Notes:
+%  \include xxx
+%      expands to \clearpage \input xxx.tex \clearpage
+%  \chapter
+%      expands to \clearpage  OR \cleardoublepage
+%                 \thispagestyle{plain}
+%                  ...
+% \cleardoublepage is modified to output an empty page with pagestyle empty
+% for headings and footers.
+\renewcommand{\cleardoublepage}{%
+  \clearpage
+  \if@twoside
+    \ifodd\c@page
+    \else
+      \hbox{}\thispagestyle{empty}\newpage
+      \if@twocolumn \hbox{}\newpage \fi
+    \fi
+  \fi}
+
+%%========= Fancy headings setup
+% Single-sided printing
+%   header:   Head-text          5
+%             --------------------
+% Double-sided printing
+%   header:   4          Head-text
+%   even      --------------------
+%
+%   header:   Section-title      5
+%   odd       --------------------
+\RequirePackage{fancyhdr}
+
+\def\romanpage{\csname @roman\endcsname \c@page}
+\def\pagenumformat{%
+  \ifx\thepage\romanpage
+     \thepage
+  \else
+     \thechapter-\thepage
+  \fi}
+
+\pagestyle{fancy}
+\if@twoside
+  \renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+  \renewcommand{\sectionmark}[1]{\markright{\thesection\ #1}}
+  \fancyhf{}            % clear all fields
+  \fancyhead[LE,RO]{\bfseries \pagenumformat}
+  \fancyhead[LO]{\bfseries \nouppercase{\rightmark}}
+  \fancyhead[RE]{\bfseries \nouppercase{\leftmark}}
+  \fancyfoot[LO,RE]{\datestampbox}
+\else
+  \renewcommand{\chaptermark}[1]{\markright{\thechapter\ #1}}
+  \fancyhf{}            % clear all fields
+  \fancyhead[RE,RO]{\bfseries \pagenumformat}
+  \fancyhead[LE,LO]{\bfseries \nouppercase{\rightmark}}
+  \fancyfoot[LO,RE]{\datestampbox}
+\fi
+
+\renewcommand{\footrulewidth}{0pt}
+\renewcommand{\headrulewidth}{0.4pt}
+\addtolength{\headwidth}{0.3in}
+\def\headrule{{\headrulehook
+               \hrule height\headrulewidth width\headwidth
+               \vskip-\headrulewidth}}
+\def\headrulehook{}
+
+% Notes:
+%  - \nouppercase is to knock out the hardwired uppercase in
+%    contents and bibliography
+%  - \headrulehook can used for colour, e.g. \def\headrulehook{color{red}}
+
+% Redefine plain style (used by \chapter) to just a page number at the top
+\fancypagestyle{plain}{%
+  \fancyhf{}            % clear all fields
+  \fancyhead[LE,RO]{\bfseries \pagenumformat}%
+  \fancyfoot[LO,RE]{\datestampbox}}
+
+%================== Experiment header changes
+% \experiment:  like chapter but resets the page numbering
+% Custom \@makechapterhead and \@makeschapterhead (with logo)
+% [classes.dtx]
+\def\experiment{\chapter}   % Cannot be \let (datestamp redefines chapter)
+\def\chaptername{Term Project}
+
+\def\@makechapterhead#1{%
+  \pagenumbering{arabic}%
+  \Hlogo
+  \vspace*{30\p@}%
+  {\parindent \z@ \raggedright \normalfont
+    \ifnum \c@secnumdepth >\m@ne
+        \huge\bfseries \@chapapp\space \thechapter
+        \par\nobreak
+        \vskip 15\p@
+    \fi
+    \interlinepenalty\@M
+    \Huge \bfseries #1\par\nobreak
+    \vskip 40\p@
+  }}
+\def\@makeschapterhead#1{%
+  \pagenumbering{arabic}%
+  \Hlogo
+  \vspace*{30\p@}%
+  {\parindent \z@ \raggedright
+    \normalfont
+    \interlinepenalty\@M
+    \Huge \bfseries  #1\par\nobreak
+    \vskip 40\p@
+  }}
+
+% Redefine \appendix appropriate for appendices on a section level
+\renewcommand\appendix{\par
+  \setcounter{section}{0}%
+  \setcounter{subsection}{0}%
+  \renewcommand\thesection{\thechapter-\@Alph\c@section}}
+
+\def\addcontentsline#1#2#3{%
+  \addtocontents{#1}{\protect\contentsline{#2}{#3}{\pagenumformat}}%
+}
+%================== general changes
+% Smaller section and subsection heads
+% [classes.dtx]
+\renewcommand\section{\@startsection {section}{1}{\z@}%
+    {-3.5ex \@plus -1ex \@minus -.2ex}%
+    {2.3ex \@plus.2ex}%
+    {\normalfont\large\bfseries}}
+\renewcommand\subsection{\@startsection{subsection}{2}{\z@}%
+    {-3.25ex\@plus -1ex \@minus -.2ex}%
+    {1.5ex \@plus .2ex}%
+    {\normalfont\bfseries}}
+
+% Placement of figures htbp instead of tbp
+% Figure name in bold
+% [classes.dtx]
+\renewcommand\fps@figure{htbp}
+\renewcommand\fnum@figure{{\reset@font\bfseries\figurename~\thefigure}}
+
+% Less space between the number and the section title (1em -> 0.5em)
+% [ltsect.dtx]
+\renewcommand\@seccntformat[1]{\csname the#1\endcsname\hskip 0.5em}
+
+% Float captions
+% - Remove ":" separating the number from the caption
+% - Typeset the caption in \small
+% - Set the caption in a narrower (80%) parbox, if in single column mode
+% [classes.dtx]
+\def\captiontextfraction{0.8}
+\def\captionfontsize{\small}
+\long\def\@makecaption#1#2{%
+  \vskip\abovecaptionskip
+  \sbox\@tempboxa{\captionfontsize #1\quad#2}%
+  \if@twocolumn
+    \ifdim \wd\@tempboxa >\hsize
+      \captionfontsize #1\quad#2\par
+    \else
+      \global \@minipagefalse
+      \hb@xt@\hsize{\hfil\box\@tempboxa\hfil}%
+    \fi
+  \else
+    \ifdim \wd\@tempboxa >\captiontextfraction\hsize
+      \begin{center}
+      \parbox{\captiontextfraction\hsize}{\captionfontsize #1\quad#2}
+      \end{center}
+    \else
+      \global \@minipagefalse
+      \hb@xt@\hsize{\hfil\box\@tempboxa\hfil}%
+    \fi
+  \fi
+  \vskip\belowcaptionskip}
+
+% Figure name becomes "Fig." (was "Figure")
+\renewcommand\figurename{Fig.}
+
+% Modify \thebibliography
+% - generate a section (not a chapter)
+% - use mark right instead of mark both
+% - remove \MakeUppercase for the section name
+% [classes.dtx]
+\providecommand\refname{References}
+\renewenvironment{thebibliography}[1]
+     {\section*{\refname
+        \markright{\refname}}%
+      \list{\@biblabel{\@arabic\c@enumiv}}%
+           {\settowidth\labelwidth{\@biblabel{#1}}%
+            \leftmargin\labelwidth
+            \advance\leftmargin\labelsep
+%           \@openbib@code  % Not used & not defined in early latex2e's
+            \usecounter{enumiv}%
+            \let\p@enumiv\@empty
+            \renewcommand\theenumiv{\@arabic\c@enumiv}}%
+      \sloppy\clubpenalty4000\widowpenalty4000%
+      \sfcode`\.\@m}
+     {\def\@noitemerr
+       {\@latex@warning{Empty `thebibliography' environment}}%
+      \endlist}
+
+%================== Document settings
+% Turn on paragraph indentation after a section
+\let\@afterindentfalse\@afterindenttrue
+\@afterindenttrue
+
+%================== Macro definitions
+% Steps list
+\newenvironment{steps}{%
+  \leftmargini=1.1em \begin{itemize}}{\end{itemize}}
+
+% \TT
+% Teletype font (use instead of \verb in footnotes),
+% \\ - backslash character
+% \{ - opening brace
+% \} - closing brace
+% \~ - tilde
+% example: \TT{The macro \\abc\{xxx\} is used ...}.
+% \URL
+% Same as \TT, but macro \- is defined to give a discretionary break without
+% a hyphen at the end of a line.  This can be used to give a long string
+% such as a web address, with places marked to indicate where it can be
+% broken, e.g. \URL{http://WWW.TSP.EE.McGill.CA/\-software.html}
+\edef\@lbrace{\expandafter\@gobble\string\{}
+\edef\@rbrace{\expandafter\@gobble\string\}}
+\edef\@tilde{\expandafter\@gobble\string\~}
+\def\TT#1{\texttt{\def\\{\@backslashchar}%
+                  \def\{{\@lbrace}%
+                  \def\}{\@rbrace}%
+                  \def\~{\@tilde}#1}}
+\def\URL#1{\TT{\def\-{\discretionary{}{}{}}#1}}
+
+%================== datestamp
+% load the datestamp package
+\RequirePackage{datestamp}
+
+% Redefine \include to reset the datestamp (\include cannot be nested)
+% Notes:
+%   - The \include{xxx} macro essentially expands to
+%       \clearpage \input xxx.tex \clearpage
+%     If the \includeonly macro has been invoked without xxx in the list of
+%     files to be included, only the first \clearpage is executed.
+%   - Consider the following scenario
+%       <Text-1>
+%       \include{xxx}
+%       \include{yyy}
+%       <Text-2>
+%     - The first \clearpage in the first \include "belongs" to <Text-1>.  Any
+%       date stamp on this page should reflect the date associated with the
+%       main file.
+%     - The second \clearpage in the first \include belongs to xxx.  The date
+%       stamp should reflect the date associated with xxx.
+%     - The first \clearpage in the second \include is a no-op.
+%     - The second \clearpage in the second \include belongs to yyy and should
+%       have the date stamp associated with yyy.
+%   - In an \include, the date stamp should be reset after the first
+%     \clearpage but not restored until after the second \clearpage.
+%   - Alas, the use of an "openright" class option messes up things a bit.
+%     Consider \include'd chapters.  With the "openright" option, \chapter
+%     issues a \cleardoublepage command which may send out an extra page.
+%     In the scenario above, the extra page will be associated with the
+%     included file, not the previous text.
+%   - The algorithm for included files is as follows:
+%     - Save the current date stamp values
+%     - Redefine \InputIfFileExists (used to actually input the file) to
+%       reset the date stamp value (this occurs after the first \clearpage)
+%       and reset its own definition.
+%     - After including the file (after the second \clearpage), restore the
+%       the date stamp value
+%  - The algorithm for handling \cleardoublepage within a chapter is as
+%    follows.
+%    - Within an \include, redefine \chapter
+%      - The redefined \chapter redefines \cleardoublepage if no pages have
+%        been printed.
+%        - The redefined \cleardoublepage resets the date stamp to the saved
+%          values, and restores its own original definition.  This makes any
+%          extra page created by the \cleardoublepage belong to the main text.
+
+% Warning: InputIfFileExists takes 3 arguments
+\let\SVInputIfFileExists=\InputIfFileExists
+\let\SVcleardoublepage=\cleardoublepage
+\let\SVchapter=\chapter
+\let\SVinclude=\include
+
+\long\def\DSInputIfFileExists{%
+  \setdatestampvalue\relax          % Reset the date stamp
+  \global\datestampcount=0%
+  \let\InputIfFileExists=\SVInputIfFileExists   % Restore \InputIfFileExists
+  \SVInputIfFileExists              % Input the file
+}
+\def\DScleardoublepage{%
+  \edef\SSV@ds{\@datestamp}%            % Save SSV
+  \edef\SSV@dscount{\the\datestampcount}%
+    \setdatestampvalue[\SV@ds]%         % Restore SV
+    \global\datestampcount=\SV@dscount
+      \let\cleardoublepage=\SVcleardoublepage   % Restore \cleardoublepage
+      \SVcleardoublepage
+    \edef\SV@dscount{\the\datestampcount}%  % Update SV
+  \setdatestampvalue[\SSV@ds]%          % Restore SSV
+  \global\datestampcount=\SSV@dscount
+}
+\def\DSchapter{%
+  \ifnum\datestampcount=0
+    \let\cleardoublepage=\DScleardoublepage
+  \fi
+  \let\chapter=\SVchapter           % Restore \chapter
+  \SVchapter
+}
+\def\include#1{%
+  \edef\SV@ds{\@datestamp}%         % Save the date stamp
+  \edef\SV@dscount{\the\datestampcount}%
+    \let\InputIfFileExists=\DSInputIfFileExists
+    \ifx\chapter\@undefined
+    \else
+      \let\chapter=\DSchapter
+    \fi
+    \SVinclude {#1}%
+  \setdatestampvalue[\SV@ds]%           % Restore the date stamp
+  \global\datestampcount=\SV@dscount
+}

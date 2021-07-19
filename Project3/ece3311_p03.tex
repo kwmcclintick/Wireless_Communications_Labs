@@ -1,0 +1,260 @@
+\documentclass[letterpaper,12pt]{article}
+
+%-----------------------------------------------------------
+% Packages
+%-----------------------------------------------------------
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amstext}
+\usepackage{array}
+\usepackage{subfigure}
+\usepackage{color}
+\usepackage{listings}
+\usepackage[framed]{mcode}
+\usepackage{caption}
+%-----------------------------------------------------------
+
+
+%-----------------------------------------------------------
+% Report dimensions
+%-----------------------------------------------------------
+\addtolength{\oddsidemargin}{-.875in}
+\addtolength{\evensidemargin}{-.875in}
+\addtolength{\textwidth}{1.75in} \addtolength{\topmargin}{-.875in}
+\addtolength{\textheight}{1.75in} \special
+{papersize=\the\paperwidth,\the\paperheight}
+%-----------------------------------------------------------
+
+\begin{document}
+
+\begin{table}[h]
+\begin{tabular}{m{2.5in}m{0.15in}m{3.95in}}
+  \includegraphics[width=2.5in,keepaspectratio=true]{images/logo.eps} &
+  {} &
+  \begin{tabular}{c}
+    {\large ECE3311 -- Principles of Communication} \\
+    \vspace*{2mm}{\large Systems}\\
+    \vspace*{2mm}{\normalsize Project~03}\\
+    {\normalsize Due: 5:00 PM, Tuesday 21 November 2017}
+  \end{tabular}\\
+  \hline
+\end{tabular}
+\end{table}
+
+%-----------------------------------------------------------
+\section{Project Objective \& Learning Outcomes}
+
+The objective of this project is to introduce the concept of the phase locked loop (PLL) and the superheterodyne receiver structure.
+
+From this project, it is expected that the following learning outcomes are achieved:
+\begin{itemize}
+ \item Obtain an understanding of how the phase locked loop enables a receiver to lock onto the carrier frequency of an intercepted waveform.
+ \item Learn about the ability of the superheterodyne receiver to demodulate an intercepted waveform using multiple intermediate frequency stages.
+ \item Explore how a passband waveform containing audio information can be demodulated using the superheterodyne receiver into a baseband signal that can then be played for a human listener.
+\end{itemize}
+
+%-----------------------------------------------------------
+\section{Phase Lock Loops}
+
+
+Phase locked loops (PLLs) are used to lock onto the carrier frequency of an intercepted signal. In Project 2, this was done via a manual frequency shift. With the carrier frequency identified, once can then demodulate the signal down to baseband and proceed with decoding the signal for its message signal $m(t)$.  However, PLLs are not trivial to understand nor implement.  In this section, we will use MATLAB's communications toolbox to construct a fine frequency compensator (see Figure~\ref{fig:pll}).
+
+\begin{figure}[h]
+ \centering
+ \includegraphics[width=.9\linewidth]{./images/pll.eps}
+ \caption{A PLL structure performing phase error estimation on the coarse frequency corrected signal $x(n)$, forming the discrete-time signal $e(n)$. A loop filter smooths out the error waveform $f(n)$, and a PI controller adds the feedback signal $c(n)$ to the input to form the fine frequency corrected signal $y(n)$ which is ready for demodulation to baseband.}
+\label{fig:pll}
+\end{figure}
+
+Utilizing a PLUTO Software Defined Radio (SDR), the message "Hello World 000" was transmitted on loop to another receiver radio. The transmission $savedata.mat$ combines many tasks, including pulse shaping, frame synchronization, coarse and fine frequency correction, timing correction, and removal of phase ambiguity, all of which are handled in the $rx.m$ matlab function script, except for fine frequency correction.
+
+
+
+\begin{figure}[h]
+ \centering
+ \includegraphics[width=.85\linewidth]{./images/coarse_corrected.eps}
+ \caption{Hello World transmission after coarse frequency correction. Since $f = \frac{\delta \theta}{\delta t}$, even small frequency offsets at baseband can result in IQ spinning if enough samples are present.}
+\label{fig:coarse}
+\end{figure}
+
+
+
+\begin{figure}
+	\centering	
+\subfigure[Phase ambiguity still remains (QPSK is symmetrical so it is visually unclear if the symbols in each quadrent correspond to what was transmitted).]{\includegraphics[width = 3.2in]{./images/pll_corrected.eps}}
+\subfigure[n this case, $180^o$ phase error remains due to the non-wavelength-multiple $\lambda = c/f$ distance between the transmitter and receiver. The last wavelength is interrupted at distance $d_r < \lambda$. Phase correction is done using an equalizer, codewords, or differential encoding.]{\includegraphics[width = 3.2in]{./images/phase_corr.eps}}
+\label{fig:fine}
+\end{figure}
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{QUESTION (5 Points)}: If the phase ambiguity after frequency correction is about $180^o$, and the carrier $cos(2\pi f_c t)$ used in the PLUTO transmission has a frequency $f_c=450 \times 10^6$, what is the interruption distance $d_r$?
+\end{minipage}
+}
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{ACTION (40 Points)}: Should you succeed in designing the constants that drive the PI controller's transfer function, you should see the following decoded messages, rewarded at a rate of 5 points per "Hello World", given partial credit for partially correct messages:
+\end{minipage}
+}
+
+\pagebreak
+\begin{figure}[h]
+\centering
+\begin{minipage}[framed]{0.9\textwidth}
+\begin{lstlisting}
+7  _(
+ _OOO
+Hello World 000
+Hello World 000
+Hello World 000
+Hello World 000
+Hello World 000
+Hello World 000
+Hello World 000
+Hello World 000
+\end{lstlisting}
+\end{minipage}
+\captionsetup{labelformat=empty}
+\end{figure}
+
+How to design a PLL? In this project we will be implementing a discrete time model designed by Michael Rice in his 2008 textbook, "Digital Communications - A Discrete Time Approach" (See Figure~\ref{fig:rice}).
+
+\begin{figure}[h]
+ \centering
+ \includegraphics[width=.55\linewidth]{./images/pllmrice.eps}
+ \caption{Michael Rice's discrete time phase detector, loop filter, and controller PLL model.}
+\label{fig:rice}
+\end{figure}
+
+You will need to define loop phase constant:
+
+\begin{equation}
+\theta = \frac{B_n}{N \Big(\gamma + \frac{1}{4\gamma}  \Big)},
+\end{equation}
+
+where $0 < \gamma < \inf$ is the phase recover damping factor, being underdamped for $\gamma < 1$ and over damped for $\gamma > 1$, and critically damped for $\gamma = 1$. You will also need the common denominator constant $d$:
+
+\begin{equation}
+d = 1 + 2\gamma \theta + \theta^2,
+\end{equation}
+
+and you will need to define the loop filter gains $K_p$, $K_1$, and $K_2$:
+
+\begin{equation}
+K_p = 2KA^2 + 2KA^2,
+K_1 = \frac{4 \gamma \theta}{K_0 K_p d},
+K_2 = \frac{4 \theta^2}{K_0 K_p d}.
+\end{equation}
+
+Here is a head start on implementing his model:
+
+\begin{figure}[h]
+\centering
+\begin{minipage}[framed]{0.9\textwidth}
+\begin{lstlisting}
+% Design the Phase Locked Loop here
+Downsampling = 32; Upsampling = 64;
+K = 1; A = 1/sqrt(Upsampling/Downsampling);
+% Normalized loop bandwidth for fine frequency compensation
+PhaseRecoveryLoopBandwidth = 0.01; % Bn
+% Damping Factor for fine frequency compensation
+PhaseRecoveryDampingFactor = gamma;
+% sampling factor after upsampling then downsampling
+PostFilterOversampling = N;
+% K_p for Fine Frequency Compensation PLL, determined by 2*K*A^2 (for
+% binary PAM), QPSK could be treated as two individual binary PAM
+PhaseErrorDetectorGain = Kp;
+PhaseRecoveryGain = K0; % K_0 for Fine Frequency Compensation PLL
+% Define PI Controller constants based on definitions
+theta = ?; d = ?; K1 = ?; K2 = ?;
+            
+FineFreqCompensator = QPSKFineFrequencyCompensator(...
+                'ProportionalGain', K1, ...
+                'IntegratorGain', K2, ...
+                'DigitalSynthesizerGain', -1*PhaseRecoveryGain);
+
+% Call Phy Layer via function call (DO NOT EDIT rx()!!!)
+rx(Upsampling, Downsampling, A, K, FineFreqCompensator)
+\end{lstlisting}
+\end{minipage}
+\captionsetup{labelformat=empty}
+\end{figure}
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{ACTION (25 Points)}: Correctly calculate $K_p$, $K_1$, $K_2$, $d$, and $\theta$ and give your reasoning for how you choose values for $K_0$, $N$, and $\gamma$. 
+\end{minipage}
+}
+
+
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{QUESTION (5 Points)}: Why might the PLL not have correctly adjusted the carrier frequency for the first two messages, $7  \_($ and $ \_OOO$? 
+\end{minipage}
+}
+\pagebreak
+
+%-----------------------------------------------------------
+\section{Superheterodyne Receiver}\label{s:superhet_rx}
+
+One useful receiver structure often used in communication systems is the superheterodyne receiver. Instead of directly demodulating a signal from a passband carrier frequency down to baseband in a single step, the superheterodyne
+receiver structure demodulates a signal down to baseband in several steps, lowering the signal to several intermediate frequency (IF) values using different local oscillator (LO) values.  Directly converting a passband signal down 
+to baseband requires a single oscillator that can perfectly demodulate that signal in a single attempt, which is potentially costly and not very efficient.  On the other hand, using a superheterodyne receiver approach, multiple
+LOs can be used to gradually bring down the passband signal to baseband in several smaller frequency steps.  The purpose of this section is to construct your own superheterodyne receiver using the parameters provided.
+\begin{figure}[h]
+\centering
+\begin{minipage}[framed]{0.9\textwidth}
+\begin{lstlisting}
+% Define parameters
+L = 10000;               % Length of the overall transmission
+omega_0 = 2*pi*10000;    % Frequency of baseband cosine signal
+omega_c = 2*pi*300000;   % Passband carrier frequency
+omega_lo1 = 2*pi*100000; % LO1 frequency
+omega_lo2 = 2*pi*200000; % LO2 frequency
+A_0 = 1;                 % Baseband signal amplitude
+T_s = 1/(100e4);         % Sampling time
+F_s = 1/T_s;             % Sampling frequency
+t = 0:T_s:((L-1)*T_s);   % Time vector
+
+% Create baseband signal
+m_signal = A_0.*cos(omega_0*t);
+\end{lstlisting}
+\end{minipage}
+\captionsetup{labelformat=empty}
+\end{figure}
+
+In this section, our baseband signal is a cosine waveform.  Referring to Figure~\ref{f:p3_superhet}, the frequency perspective of how a superheterodyne receiver is presented, where the top plot shows the original baseband
+signal while the plot that is second from the top shows that same signal modulated directly to a passband frequency.  The next four plots shows how the local oscillators can be used to modulate the passband signal
+down to several intermediate frequency (IF) stages before ultimately reaching baseband again.
+
+\begin{figure}[h]
+ \centering
+ \includegraphics{./images/p3_superhet.eps}
+ \caption{Magnitude responses illustrating the operation of a superheterodyne receiver. (top to bottom): Baseband waveform, passband waveform, passband waveform modulated down using the first LO, modulated passband waveform lowpass filtered in order to keep only one of the spectral replicas, filtered signal modulated down to baseband using the second LO, modulated waveform filtered using a lowpass filter to keep only the baseband replica.}\label{f:p3_superhet}
+\end{figure}
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{ACTION (25 Points)}: For this section, you are tasked with reproducing Figure~\ref{f:p3_superhet} given the same baseband signal and using the same simulation parameters provided.
+\end{minipage}
+}
+
+%-----------------------------------------------------------
+\section{Final Report Format \& Content}
+
+Each experiment report should possess the following format:
+\begin{itemize}
+ \item A cover page (2 points) that includes the course number, project number, names and WPI ID numbers, submission date.
+ \item A narrative (10 points) of the process taken during this experiment and the experiences encountered by the student.  Figures, plots, schematics, diagrams, snippets of source code, and other visuals are highly encouraged.
+ \item Responses to all questions indicated in the project handout.   Please make sure that the responses are of sufficient detail.
+ \item A summary (5 points) that contains all lessons learned from this project.
+ \item All source code (5 points) generated (as an appendix).
+\end{itemize}
+
+This single document must be electronically submitted in {\bf PDF format} (no other formats will be accepted) via the ECE3311 CANVAS website by the due date. Failure to submit this report by the specified due date and time will result in a grade of ``0\%''.
+
+
+\end{document}

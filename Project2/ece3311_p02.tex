@@ -1,0 +1,446 @@
+\documentclass[letterpaper,12pt]{article}
+
+%-----------------------------------------------------------
+% Packages
+%-----------------------------------------------------------
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amstext}
+\usepackage{array}
+\usepackage{subfigure}
+\usepackage{color}
+\usepackage{listings}
+\usepackage[framed]{mcode}
+\usepackage{caption}
+%-----------------------------------------------------------
+
+
+%-----------------------------------------------------------
+% Report dimensions
+%-----------------------------------------------------------
+\addtolength{\oddsidemargin}{-.875in}
+\addtolength{\evensidemargin}{-.875in}
+\addtolength{\textwidth}{1.75in} \addtolength{\topmargin}{-.875in}
+\addtolength{\textheight}{1.75in} \special
+{papersize=\the\paperwidth,\the\paperheight}
+%-----------------------------------------------------------
+
+\begin{document}
+
+\begin{table}[h]
+\begin{tabular}{m{2.5in}m{0.15in}m{3.95in}}
+  \includegraphics[width=2.5in,keepaspectratio=true]{images/logo.eps} &
+  {} &
+  \begin{tabular}{c}
+    {\large ECE3311 -- Principles of Communication} \\
+    \vspace*{2mm}{\large Systems}\\
+    \vspace*{2mm}{\normalsize Project~02}\\
+    {\normalsize Due: 5:00 PM, Tuesday 14 November 2017}
+  \end{tabular}\\
+  \hline
+\end{tabular}
+\end{table}
+
+%-----------------------------------------------------------
+\section{Project Objective \& Learning Outcomes}
+
+The objective of this project is to introduce the concept of pulse shaping for reliable data transmission and the introduction of receiver implementations for recovering analog waveforms.
+
+From this project, it is expected that the following learning outcomes are achieved:
+\begin{itemize}
+ \item Obtain an understanding of how sampled information can be transformed into various pulse shapes, transmitted across a channel, and successfully recovered at the receiver.
+ \item Learn about Nyquist type pulse shapes, such as sinc pulses and raised cosine pulses.
+ \item Experience the effect of intersymbol interference and realize how equalization can counteract these adverse effects.
+ \item Gain proficiency in implementing amplitude modulation and phase modulation systems that take baseband signals and transform them into passband signals.
+ \item Devise approaches that can convert passband signals, such as amplitude modulation and phase modulation, back down to bandpass signals.
+\end{itemize}
+
+%-----------------------------------------------------------
+\section{Preparations}\label{s:prep}
+
+It is important that one enters this project with the mindset that we will take information, transform into another form or representation suoitable for transmission across some medium, and then attempt to reconstruct
+this received signal into the original information.  An illustration highlighting this viewpoint is shown in Figure~\ref{f:p2_concept}, where we have an information source and an information sink, and we wish to have an information
+exchange between these two locations.  We assume that there exists some sort of medium separating these two locations, and that sending the desired information is either impossible or significantly inefficient in its 
+current form.  Consequently, some sort of ``processing'' (either analog processing, digital processing, or a combination of the two) is required to convert this information into a format that is more amenable to the
+transmission medium.
+\begin{figure}[h]
+ \centering
+ \includegraphics{./images/p2_concept.eps}
+ \caption{Illustration of a generic communication system, with an information source and sink, a channel separating the two locations, and some information processing designed to enable efficient and reliable information between the two points.}\label{f:p2_concept}
+\end{figure}
+
+As an example of processing information before and after it is communicated across a transmission channel, let us look what happens when we take an impulse train of samples with amplitude values of $\pm{1}$ and we wish to communicate it
+across a channel.  Since the channel can potentially introduce distortion to the transmission, we often apply a pulse shaping filter to the outgoing transmission in order to mitigate impairments such as intersymbol interference (ISI).
+One pulse shape that is sometime used in practice is the \textit{sinc}, which is equivalent to $\sin(x)/x$.  Sinc pulse shapes satisfy the Nyquist criterion for zero-ISI, which means when we transmit a string of information 
+possessing sinc pulse shapes, they do not incur any ISI at the receiver when we recover the desired samples.  This transmission and reception process of data involving sinc pulse shapes is presented in the following MATLAB
+code, where we have employed the \texttt{sinc} built-in function in order to generate the desired pulse shape.
+\begin{figure}[h]
+\centering
+\begin{minipage}[framed]{0.9\textwidth}
+\begin{lstlisting}
+% Generate random polar data
+d = 2.*round(rand(1,10))-1;
+
+% Define sinc pulse shape
+ps_sinc = sinc(-11:0.1:11);
+
+% Create transmission using Sinc pulse shape
+d_upsample = upsample(d,10); % Impulse train
+sig_temp = conv(d_upsample,ps_sinc);
+sig1 = sig_temp(101:1:211); % Truncate result such 
+                           % that we focus on target samples
+
+% Sample the received waveform to 
+% extract out of it the desired values
+d_hat1 = sig1(11:10:110);
+\end{lstlisting}
+\end{minipage}
+\captionsetup{labelformat=empty}
+\end{figure}
+
+From this MATLAB code, we observe in Figure~\ref{f:p2_sinc} how these original data samples, the resulting pulse shaped transmitted signal, and the recovered samples at the receiver all appear when properly time aligned.  In particular,
+we can see how the amplitude values of the original samples and the reconstructed ones are exactly the same, and that they have the exact same values as those corresponding points on the transmitted pulse shaped 
+signal at the exact same time instants.  Even though the pulse shaped signal does not immediately appear to be contain the original and reconstructed samples, with the proper timing we can extract this information perfectly due to the
+Nyquist criterion for zero ISI.
+\begin{figure}[h]
+ \centering
+ \includegraphics{./images/p2_sinc.eps}
+ \caption{Example of how sinc pulse shaping can be applied to an impulse train and then the original samples can be recovered with no ISI present.}\label{f:p2_sinc}
+\end{figure}
+
+%-----------------------------------------------------------
+\section{Raised Cosine Pulse Shapes}
+
+Similar to the sinc pulse shaping example from the previous section, another pulse shape that satisfies the Nyquist criterion for zero ISI is the \textit{raised cosine} pulse shape.  To generate the raised cosine
+pulse shape in MATLAB, one can use the following script with the command \texttt{rcosine}.  In this case, we can control the roll-off factor of the raised cosine pulse shape, \textit{i.e.}, the amount that the pulse shape tappers off,
+the sampling rate of the filter, and whether it should have a finite impulse response (FIR), infinite impulse response (IIR), or a square-root raised cosine profile.
+\begin{figure}[h]
+\centering
+\begin{minipage}[framed]{0.9\textwidth}
+\begin{lstlisting}
+% Define raised cosine pulse shape (roll-off = 0.5)
+ps_rcos = rcosine(1,10,'fir',0.5);
+\end{lstlisting}
+\end{minipage}
+\captionsetup{labelformat=empty}
+\end{figure}
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{ACTION (5 Points)}: Based on the sinc pulse shape example in Section~\ref{s:prep}, you are tasked with implementing a similar pulse shaping transmission system using the raised cosine pulse shape.  Furthermore, you will need to demonstrate
+that it is possible to extract the original samples from the recovered pulse shaped signal, similar to the plot shown in Figure~\ref{f:p2_rcos}.
+\end{minipage}
+} 
+
+
+\begin{figure}[h]
+ \centering
+ \includegraphics{./images/p2_rcos.eps}
+ \caption{Example of how raised cosine pulse shaping can be applied to an impulse train and then the original samples can be recovered with no ISI present.}\label{f:p2_rcos}
+\end{figure}
+
+%-----------------------------------------------------------
+\section{Square-Root Raised Cosine Pulse Shapes}
+
+When a raised cosine filter is applied to a communication system in order to pulse shape a transmission, it is almost always applied at the transmitter while the receiver is only tasked with recovering the desired
+samples. However, there is an alternative approach to implementing the raised cosine pulse shaping between the transmitter and the receiver.  Instead of employing the raised cosine pulse shaping filter only at the transmitter,
+we can instead split the raised cosine filter between the two ends of the channel such that we they are both applied to the sampled data, the aggregate response is a raised cosine filter.  This split pulse shaping filter at the 
+transmitter and the receiver is called a square-root raised cosine filter, which can be implemented in MATLAB using the \texttt{rcosine} function by setting \texttt{type=`sqrt'}.
+\begin{figure}[h]
+\centering
+\begin{minipage}[framed]{0.9\textwidth}
+\begin{lstlisting}
+% Define square-root raised cosine pulse
+% shape (roll-off = 0.5)
+ps_srrcos = rcosine(1,10,'sqrt',0.5);
+\end{lstlisting}
+\end{minipage}
+\captionsetup{labelformat=empty}
+\end{figure}
+
+Although splitting up the raised cosine filter between the transmitter and the receiver in order to perform pulse shaping at the transmitter and filtering at the receiver achieves the overall effect of raised cosine
+pulse shaping, only performing one of these operations instead of both of them in unison will yield pulse shapes that do \textbf{not} satisfy the Nyquist criterion for zero ISI.
+
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{ACTION (2.5 Points)}: For this section, please demonstrate that only using the square-root raised cosine pulse shaping filter at the transmitter will not eliminate ISI when the received signal is sampled in order to recover the original data, \textit{i.e.}, produce the plot shown in Figure~\ref{f:p2_srrc}.
+\end{minipage}
+} 
+
+
+\begin{figure}[h]
+ \centering
+ \includegraphics{./images/p2_srrc.eps}
+ \caption{Example showing how the application of a single square-root raised cosine pulse shaping filter at the transmitter does not effectively compensate for the ISI introduced in the communication system.}\label{f:p2_srrc}
+\end{figure}
+
+Based on Figure~\ref{f:p2_srrc}, we see that we have a problem if we only use a square-root raised cosine pulse shaping filter at the transmitter since it does not satisfy the Nyquist criterion for zero ISI.
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{ACTION (2.5 Points)}: Consequently, please show that when another square-root raised cosine filter is employed at the receiver, the recovered samples do not suffer the impact of ISI, \textit{i.e.}, the combine effect of the two square-root raised cosine filters satisfies Nyquist criterion for zero ISI (see Figure~\ref{f:p2_srrcx2}).
+\end{minipage}
+} 
+
+\begin{figure}[h]
+ \centering
+ \includegraphics{./images/p2_srrcx2.eps}
+ \caption{Example of when two square-root raised cosine filters are employed in a communication system, with one applied at the transmitter while the other is applied at the receiver.  Note how the ISI effects are mitigated relative to when just one square-root raised cosine filter is employed.}\label{f:p2_srrcx2}
+\end{figure}
+
+%-----------------------------------------------------------
+\section{Intersymbol Interference \& Equalization}
+
+So far, we have talked about ISI but we have not really explored how to generate it within a computer simulation.  One approach for generating the effects of ISI when a transmission is sent through a channel is to
+apply an FIR filter to the samples of that signal, such as the filter \texttt{h} shown below.  What the FIR filter does is it takes samples of the signal and adds weighted versions of these samples to subsequent samples of the 
+transmission, effectively ``smearing'' the samples across time.  As oppose to noise, which is completely random and added to a transmission, a channel that introduces ISI is deterministic (\textit{i.e.}, has a known and defined behavior)
+and takes the sample information of the signal and distributes it to other time instants within the signal.
+\begin{figure}[h]
+\centering
+\begin{minipage}[framed]{0.9\textwidth}
+\begin{lstlisting}
+% Create a channel with some multipath propagation
+h = [1 0.1 0.05 0.001];
+multipath_sig = filter(h, 1, d_hat2);
+\end{lstlisting}
+\end{minipage}
+\captionsetup{labelformat=empty}
+\end{figure}
+
+Suppose we take one of our pulse shaped signals from the previous sections and pass that signal through the filter \texttt{h}, we should end up experiencing a situation where the recovered samples do not match the original sample
+data, as shown in Figure~\ref{f:p2_isi}.  Despite the use of our pulse shaping filters, the introduction of a channel with a profile that is not ideal can be problematic since the pulse shaping filters are only designed to handle
+ISI with an ideal channel.
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{ACTION (3 Points)}: Please demonstrate this same situation by replicating the impact of a non-ideal channel as shown in Figure~\ref{f:p2_isi}.
+\end{minipage}
+} 
+
+\begin{figure}[h]
+ \centering
+ \includegraphics{./images/p2_isi.eps}
+ \caption{Illustration of how a non-ideal channel filter can affect the ISI performance of a communication system.}\label{f:p2_isi}
+\end{figure}
+\begin{figure}[h]
+ \centering
+ \includegraphics{./images/p2_equalized.eps}
+ \caption{Demonstration of an equalizer applied to the signal shown in Figure~\ref{f:p2_isi}.  Note how the effects of ISI have been mitigated.}\label{f:p2_equalized}
+\end{figure}
+
+To counteract the effects of a non-ideal channel that introduces ISI, many communication systems use a type of filter called an \textit{equalizer}, which theoretically is nothing more than the inverse filter of the channel filter.
+Consequently, a communication system would possess pulse shaping filters in combination with an equalizer to counteract the effects of the channel.  For example, if we apply the inverse filter to \texttt{h} to the transmission shown
+in Figure~\ref{f:p2_isi}, we obtain a signal whose recovered samples are identical to the original data (see Figure~\ref{f:p2_equalized}).
+
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{ACTION (7 Points)}: For this section, please obtain a filter that can mitigate the impact of \texttt{h}, and demonstrate its effectiveness using a plot similar to Figure~\ref{f:p2_equalized}.
+\end{minipage}
+} 
+
+
+As a side note, equalizer design is more trickier than it appears since the inverse of an FIR filter is often an IIR filter, which is difficult
+to model and implement.  Furthermore, if we implement the FIR equivalent of an IIR filter, we end up with an approximation of the target equalizer and this could lead to imperfect results when recovering the desired samples.
+
+
+%-----------------------------------------------------------
+\section{AM, PM, \& FM}
+
+Up to this point in this project, we have employed baseband impulse trains with varying amplitudes as sources of information.  We will now switch over to examining analog waveforms that are moduluated from baseband frequencies,
+\textit{i.e.}, frequencies centered around 0~Hz, to passband frequencies.  Specifically, we will explore three forms of passband modulation: \textit{Amplitude Modulation} (AM), \textit{Phase Modulation} (PM), and \textit{Frequency Modulation} (FM).
+Although the process of generating these passband waveforms is relatively straightforward, it is the recovery of the baseband analog waveform from these modulation schemes that will be more challenging. In the following MATLAB code,
+an example of how to generate an AM-modulated waveform is presented.
+\begin{figure}[h]
+\centering
+\begin{minipage}[framed]{0.9\textwidth}
+\begin{lstlisting}
+% Specify carrier frequency
+w_c = 2.*pi.*5; 
+
+% Generate a discrete version of a random continuous analog
+% waveform using a Uniform Random Number Generator and
+% an interpolation function to smooth out the result
+L = 100;  % Length of the overall transmission
+M = 10;   % Upsampling factor for generating analog waveform
+analog_wavefm = interp(rand(1,(L/M)),M);
+
+% Generate AM waveform
+n = 0:0.01:((length(analog_wavefm)/100)-0.01);
+sig_am = real((ones(1,length(analog_wavefm)) + analog_wavefm).*exp(i.*w_c.*n));
+\end{lstlisting}
+\end{minipage}
+\captionsetup{labelformat=empty}
+\end{figure}
+
+AM waveforms are relatively straightforward to generate, as well as to understand in both the time and frequency domains.  In Figure~\ref{f:p2_am}, we can readily observe how the envelope of the original analog waveform 
+is present in the AM signal.  Notice how the sinusoidal signal effectively ``fills in'' the envelope of the original analog waveform.  Although the analog waveform is present, it is the higher frequency shaped sinusoidal signal
+that is transmitted across the channel.
+\begin{figure}[h]
+ \centering
+ \includegraphics{./images/p2_am_signal.eps}
+ \caption{Example of an AM waveform.  Notice that the envelope contains the original baseband analog waveform.}\label{f:p2_am}
+\end{figure}
+
+Similarly, PM waveforms manipulate the phase information of sinusoidal signals, which carry this information across a channel to a target receiver.  An example of a PM waveform is shown in Figure~\ref{f:p2_pm}.  Notice how the 
+amplitude level remains the same for the waveform.  However, the phase of the sinusoidal waveform is changing over time, although it is difficult to observe.
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{ACTION (10 Points)}: Your task is to implement and demonstrate a PM waveform simular to the one shown in Figure~\ref{f:p2_pm}.
+\end{minipage}
+} 
+
+\begin{figure}[h]
+ \centering
+ \includegraphics{./images/p2_pm_signal.eps}
+ \caption{Example of a PM waveform.}\label{f:p2_pm}
+\end{figure}
+
+%-----------------------------------------------------------
+\section{AM \& PM Detectors}\label{s:ampm}
+
+As mentioned before, the challenge with using AM and PM modulation is not so much with the transmitter as it is with the receiver. For instance, with an AM waveform, there exists several approaches of building
+detectors that can help recover the original baseband analog waveform, including Hilbert transforms and square law devices.  Suppose we focus on the second approach, where we apply a square law device to an AM waveform, apply
+a lowpass filter to the result, and then take the square root of the output.  Although this series of operations appear somewhat unclear in the time domain, looking at the process in the frequency domain will make much more sense.  
+Referring to the top plot in Figure~\ref{f:p2_am_demod_freq}, we observe the original AM waveform in the frequency domain.  This is achieved by using the MATLAB function of the fast Fourier transform, \texttt{fft}, which 
+quickly transforms the time domain waveform into the frequency domain.  If we take the product of the AM waveform with itself, which contains a $\cos(\omega_ct)$, we end up with a frequency response (second from the top) 
+that shows a DC term and a double frequency term.  This makes sense since multiplying a $\cos(\omega_ct)$ with itself will yield $\cos^2(\omega_ct)$, which can then be rewritten via trignometric identity to be equal to
+$0.5+0.5\cos(2\omega_ct)$.  The lowpass filtering operation removes the double frequency term, leaving the DC term which is the orignal analog waveform (third plot from the top in Figure~\ref{f:p2_am_demod_freq}).  Finally, the bottom plot
+is the result of the square root applied to the filter output.
+\begin{figure}[h]
+ \centering
+ \includegraphics{./images/p2_am_demod_freq.eps}
+ \caption{The process of performing envelope detection of AM waveforms using square law devices.}\label{f:p2_am_demod_freq}
+\end{figure}
+
+In the time domain, the resulting recovered analog waveform is approximately the same as the original waveform, although the process is not perfect (see Figure~\ref{f:p2_am_demod_time}).
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{ACTION (10 Points)}: Your task in this section is to implement your own AM waveform envelope detector using a square law device. 
+\end{minipage}
+} 
+ 
+\begin{figure}[h]
+ \centering
+ \includegraphics{./images/p2_am_demod_time.eps}
+ \caption{Original (top) and recovered (bottom) analog waveform using envelope detection for AM waveforms via square law devices.}\label{f:p2_am_demod_time}
+\end{figure}
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{ACTION (10 Points)}: Another task for this section is to implement a product detector for recovering analog signals from PM waveforms.
+\end{minipage}
+} 
+
+%-----------------------------------------------------------
+\section{Make Your Own FM Receiver}
+
+Worcester has about a half-dozen local radio stations. In this section, you will be given four seconds of KISS FM 108.0 and asked to take it through several filtering and decimating steps so that you can play it out of your speakers. If we interpret the signal as an 8-bit integer, the first thing we'll want to do is zero-center it and turn the sequential in-phase quadriture values into single complex elements.
+
+\begin{figure}[h]
+\centering
+\begin{minipage}[framed]{0.9\textwidth}
+\begin{lstlisting}
+fc = 108; % MHz, carrier of KissFM Worcester
+fs = 2.5; % MHz, sample rate of RTL_SDR used to collect 4 sec of data
+plot_time = 0.002*2.5E6; % amount of samples to plot of the 4 sec of data,
+		% 5,000 samples corresponds to 2 ms at a sample rate of 2.5 MHz
+
+fid = fopen('KissFM_4sec.dat','rb');
+y = fread(fid,'uint8=>double');
+y = y-127.5;
+y = y(1:2:end) + 1i*y(2:2:end); % convert to complex values
+\end{lstlisting}
+\end{minipage}
+\captionsetup{labelformat=empty}
+\end{figure}
+
+\begin{figure}[h]
+ \centering
+ \includegraphics[width=.6\linewidth]{./images/kiss_obs.eps}
+ \caption{The observed Kiss FM signal and its ideal 108 MHz center frequency. 5,000 samples are plotted sampled at 2.5 MHz.}\label{f:kiss_obs}
+\end{figure}
+
+
+Wireless transmissions can be shifted or spread in the frequency domain by a variety of causes, including Local Oscillator (LO) drift and Doppler effects. In the next project you will implement a Phase-Locked Loop (PLL) which will seek out the received carrier and demodulate it to base-band.
+
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{ACTION (5 Points)}: For now, you are tasked with manually shifting the first  5,000 samples plotted in Figure~\ref{f:kiss_obs} by 1.78 MHz such that it falls on the ideal 108 MHz carrier that it was transmitted on. Use the supplied plotting function $plot\_FFT\_IQ.m$, and you should see a plot like Figure~\ref{f:kiss_shift}. It should take just one line of code to obtain the data needed to plot each of these four action items. If you find yourself writing a lot ask for help -- you're doing it wrong.
+\end{minipage}
+}
+
+
+\begin{figure}[h]
+ \centering
+ \includegraphics[width=.6\linewidth]{./images/kiss_shift.eps}
+ \caption{The Kiss FM manually shifted to the ideal 108 MHz center frequency so there will be no frequency offset in the base-band when demodulated.}\label{f:kiss_shift}
+\end{figure}
+
+
+Worcester's radio traffic isn't very busy, but if it were you'd see several other stations within the freqeuncy window shown in Figure~\ref{f:kiss_obs}. This neighbor-band intereference as well as noise floor is unwanted in our final audio signal, so to filter them out and hone in on the signal, we need to implement filtering and decimation.
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{ACTION (5 Points)}: To remove the side noise and begin lowering the sampling rate to the audio range, decimate the shifted signal by 8 and filter with a Hamming window using MATLAB's $decimate$ function and plot your result (see Figure~\ref{f:kiss_decimated}).
+\end{minipage}
+}
+
+\begin{figure}[h]
+ \centering
+ \includegraphics[width=.6\linewidth]{./images/kiss_decimated.eps}
+ \caption{The Kiss FM decimated signal, ready for demodulation. 5,000 samples are plotted at 2.5/8 MHz.}\label{f:kiss_decimated}
+\end{figure}
+
+Now we are ready to demodulate to baseband. The human ear can only hear frequencies up to about 22 kHz, so we won't hear anything if we play the file as it is now.
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{ACTION (5 Points)}: Using the supplied $FM\_IQ\_Demod.m$ function, demodulate the signal to base-band (see Figure~\ref{f:kiss_demod}). Plot the resulting signal.
+\end{minipage}
+}
+
+
+\begin{figure}[h]
+ \centering
+ \includegraphics[width=.6\linewidth]{./images/kiss_demod.eps}
+ \caption{The Kiss FM decimated signal, ready for demodulation. 125,000/8 samples are used to plot now at a sample rate of 2.5/8 MHz}\label{f:kiss_demod}
+\end{figure}
+
+\fbox{
+\begin{minipage}[t]{0.9\textwidth}
+\underline{ACTION (5 Points)}: Finally, use MATLAB's $decimate$ function one last time with a Hamming window and a decimation factor 10 to achieve a signal you can acutally listen to. Use the $sound$ function with the appropriate sample frequency (see Figure~\ref{f:kiss_audio}). Describe what you hear in your report, and plot the final signal.
+\end{minipage}
+}
+
+
+\begin{figure}[h]
+ \centering
+ \includegraphics[width=.6\linewidth]{./images/kiss_audio.eps}
+ \caption{The Kiss FM decimated signal, ready for listening. Notice the 15 kHz maximum frequency, and that most of the signal power lies between 5 and 10 kHz. 125,000/8/10 samples are used to plot now at a sample rate of 2.5/8/10 MHz}\label{f:kiss_audio}
+\end{figure}
+
+
+
+\pagebreak
+%-----------------------------------------------------------
+\section{Final Report Format \& Content}
+
+Each experiment report should possess the following format:
+\begin{itemize}
+ \item A cover page (2 points) that includes the course number, project number, names and WPI ID numbers, submission date.
+ \item A narrative (10 points) of the process taken during this experiment and the experiences encountered by the student.  Figures, plots, schematics, diagrams, snippets of source code, and other visuals are highly encouraged.
+ \item Responses to all questions indicated in the project handout.   Please make sure that the responses are of sufficient detail.
+ \item A summary (5 points) that contains all lessons learned from this project.
+ \item All source code (5 points) generated (as an appendix).
+\end{itemize}
+
+This single document must be electronically submitted in {\bf PDF format} (no other formats will be accepted) via the ECE3311 CANVAS website by the due date. Failure to submit this report by the specified due date and time will result in a grade of ``0\%''.
+
+
+\end{document}

@@ -1,0 +1,496 @@
+\documentclass[letterpaper,12pt]{article}
+
+%-----------------------------------------------------------
+% Packages
+%-----------------------------------------------------------
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amstext}
+\usepackage{array}
+\usepackage{subfigure}
+\usepackage{color}
+\usepackage{listings}
+\usepackage[framed]{mcode}
+\usepackage{caption}
+%-----------------------------------------------------------
+
+
+%-----------------------------------------------------------
+% Report dimensions
+%-----------------------------------------------------------
+\addtolength{\oddsidemargin}{-.875in}
+\addtolength{\evensidemargin}{-.875in}
+\addtolength{\textwidth}{1.75in} \addtolength{\topmargin}{-.875in}
+\addtolength{\textheight}{1.75in} \special
+{papersize=\the\paperwidth,\the\paperheight}
+%-----------------------------------------------------------
+
+% Macro definitions
+\newcommand{\BDE}{{\sc bde}}
+\newcommand{\FDS}{{\sc fds}}
+\newcommand{\SPW}{{\sc spw}}
+\newcommand{\goodgap}{%
+\hspace{\subfigtopskip}%
+\hspace{\subfigbottomskip}}
+\newlength{\tmptmp}
+\newcommand{\cconv}[1]{%
+\mathchardef\lll="320D%
+\settowidth{\tmptmp}{$#1$}\setlength{\unitlength}{\tmptmp}\;\raisebox{0\height}{\begin{picture}(1,1)(0,0)%
+   \put(0,0){\scalebox{1.3}{$\lll$}}\put(.18,.0){\scalebox{.65}{$#1$}}%
+  \end{picture}} }
+
+% Define counters
+\newcounter{questioncnt}
+\newcounter{matlabcnt}
+\setcounter{questioncnt}{1}
+\setcounter{matlabcnt}{1}
+
+
+\begin{document}
+
+\begin{table}[h]
+\begin{tabular}{m{2.5in}m{0.15in}m{3.95in}}
+  \includegraphics[width=2.5in,keepaspectratio=true]{images/logo.eps} &
+  {} &
+  \begin{tabular}{c}
+    {\large ECE3311 -- Principles of Communication} \\
+    \vspace*{2mm}{\large Systems}\\
+    \vspace*{2mm}{\normalsize Project~05}\\
+    {\normalsize Due: 5:00 PM, Wednesday 13 December 2017}
+  \end{tabular}\\
+  \hline
+\end{tabular}
+\end{table}
+
+%-----------------------------------------------------------
+\section{Project Objective \& Learning Outcomes}
+
+In this project, we will investigate the physical layer of a
+generic digital communication system using
+Orthogonal Frequency Division Multiplexing (OFDM) over channels
+that introduce noise.
+From this project, it is expected that the following learning outcomes are achieved:
+\begin{itemize}
+ \item Understand how multicarrier modulation operates by sending multiple signals across different carrier frequencies at the same time.
+ \item Learn about the orthogonal frequency division multiplexing concept by leveraging the Inverse Discrete Fourier Transform (IDFT) and DFT.
+ \item Master Quadrature Amplitude Modulation (QAM) and how it operates as a 2-dimensional modulation scheme.
+\end{itemize}
+
+\section{Modulation and Demodulation of QAM symbols}
+
+Quadrature Amplitude Modulation (QAM) is the technique of
+transmitting data on two quadrature carriers (\textit{i.e.}, they are
+$90^{\circ}$ out of phase with each other, making them {\it
+orthogonal}).
+In what follows, we will consider a digital implementation of the modulation,
+so that the carrier signals are
+ $\cos(\omega_kn)$ and
+$\sin(\omega_kn)$, with carrier frequency $\omega_k$. The
+amplitude of each of these two carriers is specified by the
+sequence of input bits, and is changed every $2N$ samples, which
+is called the {\em QAM symbol period}. The amplitudes can take on
+only a finite number of possible values.
+%The digital information is thus contained in the amplitudes of the two carrier signals. Of course, in order to enable decoding, the time over which these amplitudes  remain constant (\textit{i.e.}, the {\em symbol period}, denoted here by $2N$)  has to be at least as big as  the carrier period.
+%As seen in
+Figure~\ref{qam_mod} represents a discrete-time model of the QAM
+modulator, where
+the sequence of input bits $d[m]$ is used to determine the amplitudes of the
+two carriers. %The amplitudes can take on only a finite number of values,
+              %typically some integer poerw of 2, say $2^D$. So f%
+For each symbol period, $D$ bits of input are taken from the input
+bit stream $d[m]$ and used to select one of the $2^D$ combinations
+of amplitudes for the two carriers. Calling these amplitudes
+$a[\ell]$ and $b[\ell]$ respectively, where $\ell$ represents the
+symbol time index, these amplitudes are kept constant for the
+duration of a symbol period by the upsampling and rectangular
+window filtering shown in Figure~\ref{qam_mod}, yielding the
+piecewise constant signals $a'[n]$ and $b'[n]$.
+One can then write the expression of the modulated signal as   % the input bit sequence $d[m]$ is
+%demultiplexed using a commutator into two data streams and encoded
+%into an amplitude depending on the combination of bits. These
+%amplitudes, $a_l$ and $b_l$, which remain constant over the symbol
+%period of $2N$, are then modulated with the carriers, yielding
+\begin{equation}\label{basic_qam_defn}
+%\begin{array}{ccc}
+  s[n]=a'[n]\cos(\omega_kn)+b'[n]\sin(\omega_kn)% & \hspace*{3mm} & \begin{array}{c}
+%    n=0,\dots,2N-1 \\
+%    0\le{k}<N \\
+%  \end{array} \\
+%\end{array}
+\end{equation}
+where $\omega_k=2\pi{k}/2N$ is the carrier frequency, and $2N$ is
+the period of the symbol. Note that we have to limit the possible carrier frequencies to integer multiples of $2\pi/2N$ in order to keep orthogonality between the sinusoidal and cosinusoidal carriers in a digital implementation (see derivations below).
+
+\begin{figure}[h]
+\centering
+%\begin{tabular}{cc}\subfigure{\includegraphics[width=.5\textwidth]{images/qam_mod.eps}}&\subfigure{
+\scalebox{.5}{\input{images/qam_mod.pstex_t}}%}
+%\end{tabular}\\
+\caption{Rectangular QAM modulator  (multirate model of a digital implementation).\label{qam_mod}}
+\end{figure}
+
+\begin{description}
+    \item[{\bf Question \arabic{questioncnt}\stepcounter{questioncnt} (5 points):}]
+    Prove that the carriers $\cos(\omega_kn)$ and $\sin(\omega_kn)$ are %equal to zero when multiplied together and summed up across
+orthogonal over the symbol period\footnote{Two real sequences $h[n]$ and $g[n]$ are said to be orthogonal over a period $0$ to $P$ if $\sum_{n=0}^{P-1} h[n]g[n]=0$.} . Are there any values of $k$ that are exceptions? Why?
+\end{description}
+
+\begin{description}
+    \item[{\bf Matlab Task \arabic{matlabcnt}\stepcounter{matlabcnt} (10 points):}]
+    Implement the QAM modulator as shown in Figure~\ref{qam_mod}, given an arbitrary $\omega_k$.
+\end{description}
+
+
+
+%As for the encoding of bits into amplitude values, if the QAM symbol
+%uses $D$ bits, the in-phase and quadrature components each use $D/2$
+%bits. Thus, for $2^D$ possible QAM symbols given a grouping of $D$
+%bits, there are $2^{D/2}$ possible amplitude values for the in-phase
+%components and $2^{D/2}$ possible amplitude values for the quadrature
+%%components.
+%How these amplitudes are chosen depends on several
+%requirements, such as receiver complexity and error robustness.
+In this project, we will be dealing with rectangular QAM signal
+constellations, such as those shown in Figures~\ref{4qam_const},
+\ref{16qam_const}, and \ref{64qam_const} for 4-QAM, 16-QAM, and
+64-QAM, respectively. This bascially amounts to saying that
+$a[\ell], b[\ell] \in \{\pm (2k-1)E, k=1,\ldots,2^{D/2-1}\}$,
+where $E$ is some positive constant that scales the energy of the
+sent signals, and $D/2$ is the number of bits used to represent
+the amplitude level of one of the carriers during a symbol.
+
+\begin{figure}
+\begin{center}
+\subfigure[4-QAM signal
+constellation]{\label{4qam_const}\includegraphics{images/f1a.eps}}\goodgap
+\subfigure[Rectangular 16-QAM signal
+constellation]{\label{16qam_const}\includegraphics{images/f1b.eps}}\\
+\subfigure[Rectangular 64-QAM signal
+constellation]{\label{64qam_const}\includegraphics{images/f1c.eps}}
+\caption{Three types of QAM signal constellations. The in-phase
+values indicate the amplitude of the carrier $\cos(\omega_kn)$
+while the quadrature values indicate the amplitude of the carrier
+$\sin(\omega_kn)$.}
+\end{center}
+\end{figure}
+
+One of the advantages of QAM signalling is the fact that
+demodulation is relatively simple to perform. From
+Figure~\ref{qam_demod}, the received signal, $r[n]$, is split into
+two streams and each multiplied by carriers, $\cos(\omega_kn)$ and
+$\sin(\omega_kn)$, followed by a summation block (implemented here through
+filtering by a
+rectangular window followed by downsampling). This process
+produces estimates of the in-phase and quadrature amplitudes,
+$\hat{a}[l]$ and $\hat{b}[l]$, namely
+\begin{equation}\label{a_k_est}\begin{split}
+\hat{a}[\ell]&=\sum\limits_{n=2\ell{N}}^{2\ell{N}+2N-1}r[n]\cos(\omega_kn)\\
+&=\sum\limits_{n=2\ell{N}}^{2\ell{N}+2N-1}a'[n]\cos(\omega_kn)\cos(\omega_kn)+\sum\limits_{n=2\ell{N}}^{2\ell{N}+2N-1}b'[n]\sin(\omega_kn)\cos(\omega_kn)\\
+&=\sum\limits_{n=2\ell{N}}^{2\ell{N}+2N-1}a'[n]\cos\left(\frac{2\pi{k}{n}}{2N}\right)\cos\left(\frac{2\pi{k}{n}}{2N}\right)+\sum\limits_{n=2\ell{N}}^{2\ell{N}+2N-1}b'[n]\sin\left(\frac{2\pi{k}{n}}{2N}\right)\cos\left(\frac{2\pi{k}{n}}{2N}\right)\\
+&=\sum\limits_{n=2\ell{N}}^{2\ell{N}+2N-1}\frac{a'[n]}{2}
+\end{split}\end{equation} and
+\begin{equation}\label{b_k_est}\begin{split}
+\hat{b}[\ell]&=\sum\limits_{n=2\ell{N}}^{2\ell{N}+2N-1}r[n]\sin(\omega_kn)\\
+&=\sum\limits_{n=2\ell{N}}^{2\ell{N}+2N-1}a'[n]\cos(\omega_kn)\sin(\omega_kn)+\sum\limits_{n=2\ell{N}}^{2\ell{N}+2N-1}b'[n]\sin(\omega_kn)\sin(\omega_kn)\\
+&=\sum\limits_{n=2\ell{N}}^{2\ell{N}+2N-1}a'[n]\cos\left(\frac{2\pi{k}{n}}{2N}\right)\sin\left(\frac{2\pi{k}{n}}{2N}\right)+\sum\limits_{n=2\ell{N}}^{2\ell{N}+2N-1}b'[n]\sin\left(\frac{2\pi{k}{n}}{2N}\right)\sin\left(\frac{2\pi{k}{n}}{2N}\right)\\
+&=\sum\limits_{n=2\ell{N}}^{2\ell{N}+2N-1}\frac{b'[n]}{2}
+\end{split}\end{equation}
+where, due to the orthogonality of the two carriers, the cross
+terms vanish, leaving the desired amplitude (after some
+trigonometric manipulation). %Then, the estimates $\hat{a}_l$ and
+%$\hat{b}_l$ are passed into a decision maker, which uses a
+%nearest-neighbour rule to find the most likely known amplitude
+%level and decode it into a group of bits.
+ The bits etsimated from $\hat{a}[\ell]$ and $\hat{b}[\ell]$  bits are then
+multiplexed together, forming the reconstructed
+version of $d[m]$, $\hat{d}[m]$.
+
+\begin{figure}[t]
+\centering
+%\begin{tabular}{cc}\subfigure{\includegraphics[width=.5\textwidth]{images/qam_demod.eps}}&\subfigure{
+\scalebox{.5}{\input{images/qam-demod.pstex_t}}%}
+%\end{tabular}
+\caption{Rectangular QAM demodulator.}\label{qam_demod}
+\end{figure}
+
+\begin{description}
+    \item[{\bf Question \arabic{questioncnt}\stepcounter{questioncnt} (5 points):}]
+    Prove that Eqs.~(\ref{a_k_est}) and (\ref{b_k_est}) are true. What are the exceptions
+    for the carrier frequencies for perfect recovery% under ideal conditions
+? Why is $k$  constrained to be
+    below $N$?
+\end{description}
+
+\begin{description}
+    \item[{\bf Matlab Task \arabic{matlabcnt}\stepcounter{matlabcnt} (15 points):}]
+    Implement the rectangular QAM demodulator %and decision maker,
+    as shown in Figure~\ref{qam_demod}, given an arbitrary
+    $\omega_k$. Test the cascade of the QAM modulator and
+    demodulator to see if the input is completely recovered at the
+    output. Implement the constellations of $4$-QAM, $16$-QAM and
+    $64$-QAM. also implement the special, degenerate case of BPSK, where only
+    the cosine carrier is modulated with one bit.
+\end{description}
+
+
+We have so far dealt with modulation and demodulation in an ideal
+setting. Thus, one should expect that $\hat{d}[m]=d[m]$ with
+probability of 1. However, in the next subsection we will examine
+a physical phenomenon that distorts the transmitted signal,
+resulting in transmission errors.
+
+
+\section{Noise}\label{noisesubsection}
+
+By definition, {\it noise} is an undesirable disturbance
+accompanying the received signal that may distort the information
+carried by the signal. Noise can originate from human-made and
+natural sources, such as thermal noise due to the thermal
+agitation of electrons in transmission lines, antennas, or other
+conductors.
+
+The combination of such sources of noise is known to have a
+Gaussian distribution, as shown in Figure~\ref{awgn_hist}. A
+histogram of zero-mean Gaussian noise with a variance of
+$\sigma_n^2=0.25$ is shown, with the corresponding continuous
+probability density function (pdf) superimposed on it. The
+continuous Gaussian pdf is defined as
+\begin{equation}\label{gaussian_pdf}
+f_X(x)=\frac{1}{\sqrt{2\pi\sigma_n^2}}e^{-\frac{(x-\mu_n)^2}{2\sigma_n^2}}
+\end{equation}
+where $\mu_n$ and $\sigma_n^2$ are the mean and variance.
+
+In this work, we will also make the assumption that the noise
+introduced by the channel is {\it white}, which means that the
+noise has frequency content that is approximately flat, as shown
+in Figure~\ref{awgn_psd} for the case of zero-mean white Gaussian
+Noise with a variance of $\sigma_n^2=0.25$. Although in reality
+this assumption may not hold in certain cases, it does help
+simplify the process of demodulation.
+\begin{figure}[t]
+\centering\begin{tabular}{cc}
+\subfigure[Histogram of AWGN superimposed on the probability
+density function for a Gaussian random variable of
+N(0,0.25)]{\label{awgn_hist}\includegraphics{images/f5.eps}}&%\goodgap
+\subfigure[Power spectral density of AWGN with
+N(0,0.25)]{\label{awgn_psd}\includegraphics{images/f6.eps}}
+\end{tabular}
+\caption{Time and frequency domain properties of AWGN}
+\end{figure}
+
+Thus, when noise is added to the transmitted signal, the receiver
+has to make a decision on what has been transmitted based on the
+received signal. Usually this is accomplished via a ``nearest
+neighbour'' rule with a known set of symbols. However, if a large
+amount of noise is added to the signal, there is a possibility
+that the received symbol might be shifted closer to a symbol other
+than the correct one, resulting in an error. As seen in
+Figures~\ref{4qam_little noise}, \ref{4qam_moderate_noise}, and
+\ref{4qam_heavy_noise}, where additive white Gaussian noise is
+included with the signal, it is readily observable that as the
+noise power increases, the constellation points become fuzzy until
+they begin overlapping with each other. It is at this point that
+the system will begin to experience errors.
+\begin{figure}[t]
+\begin{center}
+\subfigure[AWGN $N(0,0.00001)$]{\label{4qam_little noise}\includegraphics[width=.3\textwidth]{images/f4a.eps}}\goodgap \subfigure[AWGN $N(0,0.01)$]{\label{4qam_moderate_noise}\includegraphics[width=.3\textwidth]{images/f4b.eps}}
+\subfigure[AWGN
+$N(0,0.25)$]{\label{4qam_heavy_noise}\includegraphics[width=.3\textwidth]{images/f4c.eps}}
+\caption{16-QAM signal constellations with varying amounts of
+noise}
+\end{center}
+\end{figure}
+
+\begin{description}
+    \item[{\bf Matlab Task \arabic{matlabcnt}\stepcounter{matlabcnt} (10 points):}]
+    Implement an AWGN generator that accepts as inputs: the
+    variance $\sigma^2$, the mean $\mu$, and the number of random
+    points $R$. Verify that it works by creating a histogram of
+    its output and compare against the Gaussian pdf as described
+    by Eq.~(\ref{gaussian_pdf}) for $\mu=3$, $\sigma^2=2$.
+\end{description}
+
+
+
+\section{Probability of Bit Error}\label{ber_section}
+
+The introduction of noise, which is a stochastic signal, to the
+transmitted signal means that the overall received signal is also
+stochastic. Thus, transmitting the same information over and over
+again may yield different results each time, assuming  that the
+same modulation scheme and receiver design are employed.
+
+In order to quantify the performance of a particular system set-up
+(\textit{e.g.}, modulation scheme, receiver design, etc...), many use the
+ratio between the number of bit errors that occur and the total
+number of bits transmitted. This ratio is an estimate of the {\it
+Probability of Bit Error} or {\it Bit Error Rate} (BER) and is
+dependent on the noise variance, the modulation scheme employed,
+and the receiver design.
+\begin{figure}[t]
+  \centering
+  \includegraphics{images/f7.eps}\\
+  \caption{Probability of Bit Error curves for 4-QAM, rectangular 16-QAM, and rectangular 64-QAM}\label{ber_curves}
+\end{figure}
+
+In Figure~\ref{ber_curves}, the BER curves for rectangular 4-QAM,
+16-QAM, and 64-QAM are presented when additive white Gaussian
+noise (AWGN) is introduced. Notice how as the signal-to-noise
+ratio (SNR) increases (noise power decreases), the probability of
+bit error decreases, as expected. Note that the SNR is the ratio
+of symbol energy to the noise energy, namely
+\begin{equation}
+\gamma=\frac{E_s}{\sigma_n^2},%. \mbox{\color{red}DEFINE MORE RIGOROUSLY}
+\end{equation}where $E_s=\frac{1}{N}\sum_{n=0}^{2N-1} s^2[n]$.
+
+\begin{description}
+    \item[{\bf Matlab Task \arabic{matlabcnt}\stepcounter{matlabcnt} (10 points):}]
+    Verify that rectangular QAM modulator/demodulator works by
+    introducing the appropriate amount of noise and comparing the
+    resulting BER with the BER in Figure~\ref{ber_curves} at
+    $10^{-3}$. What values of SNR did you employ?
+\end{description}
+
+
+
+\section{The OFDM Principle}
+\begin{figure} \centering
+%\includegraphics[height=.7\textheight]{images/oqam_sys.eps}\\
+\scalebox{.5}{\input{images/oqam_sys.pstex_t}}
+\caption{Transmitter of an orthogonally multiplexed QAM
+system}\label{oqamsys}
+\end{figure}
+
+As we have seen thus far, signals can be transmitted on a single
+carrier frequency. For instance, Eq.~(\ref{basic_qam_defn})
+modulates to the carrier frequency $\omega_k$. However, the
+transmitted signal may only use up a small portion of the total
+available bandwidth. To increase bandwidth efficiency and
+throughput, it is possible to send additional QAM signals in other portions
+of the unused bandwidth simultaneously. An example of this is
+shown in Figure~\ref{oqamsys}, where we have taken the QAM
+modulator of Figure~\ref{qam_mod} and put several of them in
+parallel, each with a different carrier frequency. The data for
+each modulator came from portions of a high speed bit stream. This
+is principle behind multicarrier modulation.
+
+\begin{description}
+    \item[{\bf Question \arabic{questioncnt}\stepcounter{questioncnt} (5 points):}]
+    Draw a schematic for an %orthogonally
+    multiplexed QAM
+    demodulator as in Figure~\ref{oqamsys}. Show that the subcarriers of the orthogonally multiplexed
+    QAM system are orthogonal.
+\end{description}
+
+
+\begin{description}
+    \item[{\bf Matlab Task \arabic{matlabcnt}\stepcounter{matlabcnt} (15 points):}]
+    Implement Figure~\ref{oqamsys} and its corresponding receiver.
+    Verify that it works under ideal conditions. What carrier
+    frequencies did you not use in the implementation?
+\end{description}
+
+
+Orthogonal Frequency Division Multiplexing (OFDM) is an efficient
+type of multicarrier modulation, which employs the discrete
+Fourier transform (DFT) and inverse DFT (IDFT) to modulate and
+demodulate the data streams.
+Since the carriers used in Figure~\ref{oqamsys} are sinusoidal function of
+$2\pi k n/2N$, it should come as no surprise that a $2N$-point DFT or IDFT can
+carry out the same modulation, since it contains also summations of terms of
+the form $e^{\pm2\pi kn/2N}$.
+The set-up of an OFDM system is
+presented in Figure~\ref{ofdmsys}. A high-speed digital input,
+$d[m]$, is demultiplexed into $N$ subcarriers using a commutator.
+The data on each subcarrier is then modulated into an $M$-QAM
+symbol, which maps a group of $\log_2(M)$ bits at a time. Unlike
+the %baseband
+ representation of Eq.~(\ref{basic_qam_defn}), for
+subcarrier $k$ we will rearrange $a_k[\ell]$ and $b_k[\ell]$ into real and
+imaginary components such that the output of the ``modulator'' block  is
+$p_k[\ell]=a_k[\ell]+jb_k[\ell]$. In order for the output of the IDFT block to be
+real, given $N$ subcarriers we must use a $2N$-point IDFT, where
+terminals $k=0$ and $k=N$ are ``don't care'' inputs. For the
+subcarriers $1\le{k}\le{N-1}$, the inputs are $p_k[\ell]=a_k[\ell]+jb_k[\ell]$,
+while for the subcarriers $N+1\le{k}\le{2N-1}$, the inputs are
+$p_{k}[\ell]=a_{2N-k}[\ell]+jb_{2N-k}[\ell]$.
+
+\begin{description}
+    \item[{\bf Question \arabic{questioncnt}\stepcounter{questioncnt} [BONUS] (3 points):}]
+    Why are $k=0$ and $k=N$ ``don't care'' inputs?
+\end{description}
+
+The IDFT is then performed, yielding
+\begin{equation}
+s[2\ell{N}+n]=\frac{1}{2N}\sum\limits_{k=0}^{2N-1}p_k[\ell]e^{j(2\pi{nk}/2N)},
+\end{equation}where this time $2N$ consecutive samples of $s[n]$ constitute an
+OFDM symbol, which is a sum of $N$ different QAM symbols.
+
+This results in the data being modulated on several subchannels.
+This is achieved by multiplying each data stream by a
+$\sin(Nx)/\sin(x)$, several of which are shown in
+Figure~\ref{freq_resp_ofdm}.
+
+The subcarriers are then multiplexed together using a commutator,
+forming the signal $s[n]$, and transmitted to the receiver. Once
+at the receiver, the signal is demultiplexed into $2N$ subcarriers
+of data, $\hat{s}[n]$, using a commutator and a $2N$-point DFT,
+defined as
+\begin{equation}
+\bar{p}_k[\ell]=\sum\limits_{n=0}^{2N-1}\hat{s}[2\ell{N}+n]e^{-j(2\pi{nk}/2N)},
+\end{equation}
+is applied to the inputs, yielding the estimates of $p_k[\ell]$,
+$\bar{p}_k[\ell]$. The output of the equalizer, $\hat{p}_k[\ell]$,
+then passed through a demodulator and the result multiplexed
+together using a commutator, yielding the reconstructed high-speed
+bit stream, $\hat{d}[m]$.
+\begin{figure}
+\centering
+\includegraphics{images/ofdm_system.eps}
+\caption{Overall schematic of an Orthogonal Frequency Division
+Multiplexing System}\label{ofdmsys}
+\end{figure}
+
+
+\begin{figure}
+\centering
+\includegraphics{images/f8.eps}
+\caption{Characteristics of Orthogonal Frequency Division
+Multiplexing: Frequency response of OFDM
+subcarriers.}\label{freq_resp_ofdm}
+\end{figure}
+
+\begin{description}
+    \item[{\bf Question \arabic{questioncnt}\stepcounter{questioncnt} [BONUS] (5 points):}]
+    Show that the OFDM configuration and the orthogonally
+    multiplexed QAM system are identical. Which of the two
+    implementations is faster if the OFDM system employs FFTs?
+    Prove it by comparing the number of operations.
+\end{description}
+
+\begin{description}
+    \item[{\bf Matlab Task \arabic{matlabcnt}\stepcounter{matlabcnt} [BONUS] (15 points):}]
+    Implement Figure~\ref{ofdmsys} using IFFT and FFT blocks using {\tt ifft} and {\tt fft}. The
+    size of the input/output should be a variable.
+\end{description}
+
+
+
+%-----------------------------------------------------------
+\section{Final Report Format \& Content}
+
+Each experiment report should possess the following format:
+\begin{itemize}
+ \item A cover page (2 points) that includes the course number, project number, names and WPI ID numbers, submission date.
+ \item A narrative (10 points) of the process taken during this experiment and the experiences encountered by the student.  Figures, plots, schematics, diagrams, snippets of source code, and other visuals are highly encouraged.
+ \item Responses to all questions indicated in the project handout.   Please make sure that the responses are of sufficient detail.
+ \item A summary (5 points) that contains all lessons learned from this project.
+ \item All source code (5 points) generated (as an appendix).
+\end{itemize}
+
+This single document must be electronically submitted in {\bf PDF format} (no other formats will be accepted) via the ECE3311 CANVAS website by the due date. Failure to submit this report by the specified due date and time will result in a grade of ``0\%''.
+
+
+
+\end{document}

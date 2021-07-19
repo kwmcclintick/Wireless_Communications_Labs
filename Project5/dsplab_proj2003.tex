@@ -1,0 +1,653 @@
+\documentclass[12pt]{article}
+
+\usepackage{times,mathptm,amsmath,citesort,amssymb,graphicx,subfigure,indentfirst}
+
+\addtolength{\oddsidemargin}{-.875in}
+\addtolength{\evensidemargin}{-.875in}
+\addtolength{\textwidth}{1.75in}
+
+\addtolength{\topmargin}{-.875in}
+\addtolength{\textheight}{1.75in}
+
+\newcommand{\goodgap}{%
+\hspace{\subfigtopskip}%
+\hspace{\subfigbottomskip}}
+
+% Define counters
+\newcounter{questioncnt}
+\newcounter{matlabcnt}
+\setcounter{questioncnt}{1}
+\setcounter{matlabcnt}{1}
+
+
+\begin{document}
+
+\title{High Speed Data Transmission over Telephone Network}
+\author{ECSE 490A Term Project}
+\date{Fall 2003}
+\maketitle
+
+\begin{abstract}
+In this project, we will investigate the physical layer of a
+generic Digital Subscriber Line (xDSL) modem. In particular, we
+will study how the system transmits digital information using
+Orthogonal Frequency Division Multiplexing (OFDM) over channels
+that introduce both noise and fading due to multipath propagation.
+With the details outlined in this handout, one should be able to
+implement an OFDM-based generic xDSL system in Matlab and transmit
+information across a non-ideal channel.
+\end{abstract}
+
+
+\section{Digital Communications Primer}
+
+Most modern communication systems, including all Digital
+Subscriber Line (xDSL) modems, use digital signalling techniques
+to transmit large quantities of information over a short period of
+time while being robust to transmission noise. The fundamental
+unit of information in these digital communication systems is the
+{\it bit}, which consists of only two values (``on'' and ``off'',
+``1'' and ``0'', etc...). However, these systems usually map, or
+{\it modulate}, groups of bits into symbols prior to transmission.
+At the receiver, each symbol is compared to a known set of symbols
+and is {\it demodulated} into the group of bits corresponding to
+the closest matching symbol. In the next subsection, we will look
+at the modulation scheme that will be employed in this project.
+
+
+\subsection{Modulation and Demodulation of QAM symbols}
+
+Quadrature Amplitude Modulation (QAM) is the technique of
+transmitting data on two quadrature carriers (i.e. they are
+$90^{\circ}$ out of phase with each other, making them {\it
+orthogonal}). Since we are considering an all-digital
+implementation, these carriers, $\cos(\omega_kn)$ and
+$\sin(\omega_kn)$ with carrier frequency $\omega_k$, have their
+amplitudes specified by the sequence of input bits. As seen in
+Figure~\ref{qam_mod}, the input bit sequence $d[m]$ is
+demultiplexed using a commutator into two data streams and encoded
+into an amplitude depending on the combination of bits. These
+amplitudes, $a_l$ and $b_l$, which remain constant over the symbol
+period of $2N$, are then modulated with the carriers, yielding
+\begin{equation}\label{basic_qam_defn}
+\begin{array}{ccc}
+  s[n]=a_l\cos(\omega_kn)-b_l\sin(\omega_kn) & \hspace*{3mm} & \begin{array}{c}
+    n=0,\dots,2N-1 \\
+    0\le{k}<N \\
+  \end{array} \\
+\end{array}
+\end{equation}
+where $\omega_k=2\pi{k}/2N$ is the carrier frequency, and $2N$ is
+the period of the symbol.
+\begin{figure}[t]
+\centering
+\includegraphics{images/qam_mod.eps}\\
+\caption{Rectangular QAM modulator}\label{qam_mod}
+\end{figure}
+
+\begin{description}
+    \item[{\bf Question \arabic{questioncnt}\stepcounter{questioncnt}:}]
+    Prove that the carriers $\cos(\omega_kn)$ and $\sin(\omega_kn)$ are equal to zero when multiplied together and summed up across the symbol period. Are there any values of $k$ that are exceptions? Why?
+\end{description}
+
+\begin{description}
+    \item[{\bf Matlab Task \arabic{matlabcnt}\stepcounter{matlabcnt}:}]
+    Implement the QAM modulator as shown in Figure~\ref{qam_mod}, given an arbitrary $\omega_k$.
+\end{description}
+
+
+
+As for the encoding of bits into amplitude values, if the QAM
+symbol uses $D$ bits, the in-phase and quadrature components each
+use $D/2$ bits. Thus, for $2^D$ possible QAM symbols given a
+grouping of $D$ bits, there are $2^{D/2}$ possible amplitude
+values for the in-phase components and $2^{D/2}$ possible
+amplitude values for the quadrature components. How these
+amplitudes are chosen depends on several requirements, such as
+receiver complexity and error robustness. In this project, we will
+be dealing with rectangular QAM signal constellations, such as
+those shown in Figures~\ref{4qam_const} and \ref{16qam_const} for
+4-QAM and 16-QAM, respectively.
+\begin{figure}[t]
+\begin{center}
+\subfigure[4-QAM signal
+constellation]{\label{4qam_const}\includegraphics{images/f1a.eps}}\goodgap
+\subfigure[Rectangular 16-QAM signal
+constellation]{\label{16qam_const}\includegraphics{images/f1b.eps}}
+\caption{Two types of QAM signal constellations. The in-phase
+values indicate the amplitude of the carrier $\cos(\omega_kn)$
+while the quadrature values indicate the amplitude of the carrier
+$\sin(\omega_kn)$.}
+\end{center}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics{images/qam_demod.eps}\\
+\caption{Rectangular QAM demodulator}\label{qam_demod}
+\end{figure}
+
+One of the advantages of QAM signalling is the fact that
+demodulation is relatively simple to perform. From
+Figure~\ref{qam_demod}, the received signal, $r[n]$, is split into
+two streams and each multiplied by carriers, $\cos(\omega_kn)$ and
+$\sin(\omega_kn)$, followed by a summation block. This process
+produces estimates of the in-phase and quadrature amplitudes,
+$\hat{a}_l$ and $\hat{b}_l$, namely
+\begin{equation}\label{a_k_est}\begin{split}
+\hat{a}_l&=\sum\limits_{n=0}^{2N-1}r[n]\cos(\omega_kn)\\
+&=\sum\limits_{n=0}^{2N-1}a_l\cos(\omega_kn)\cos(\omega_kn)+\sum\limits_{n=0}^{2N-1}b_l\sin(\omega_kn)\cos(\omega_kn)\\
+&=\sum\limits_{n=0}^{2N-1}a_l\cos\left(\frac{2\pi{k}{n}}{2N}\right)\cos\left(\frac{2\pi{k}{n}}{2N}\right)+\sum\limits_{n=0}^{2N-1}b_l\sin\left(\frac{2\pi{k}{n}}{2N}\right)\cos\left(\frac{2\pi{k}{n}}{2N}\right)\\
+&=\sum\limits_{n=0}^{2N-1}\frac{a_l}{2}
+\end{split}\end{equation} and
+\begin{equation}\label{b_k_est}\begin{split}
+\hat{b}_l&=\sum\limits_{n=0}^{2N-1}r[n]\sin(\omega_kn)\\
+&=\sum\limits_{n=0}^{2N-1}a_l\cos(\omega_kn)\sin(\omega_kn)+\sum\limits_{n=0}^{2N-1}b_l\sin(\omega_kn)\sin(\omega_kn)\\
+&=\sum\limits_{n=0}^{2N-1}a_l\cos\left(\frac{2\pi{k}{n}}{2N}\right)\sin\left(\frac{2\pi{k}{n}}{2N}\right)+\sum\limits_{n=0}^{2N-1}b_l\sin\left(\frac{2\pi{k}{n}}{2N}\right)\sin\left(\frac{2\pi{k}{n}}{2N}\right)\\
+&=\sum\limits_{n=0}^{2N-1}\frac{b_l}{2}
+\end{split}\end{equation}
+where, due to the orthogonality of the two carriers, the cross
+terms vanish, leaving the desired amplitude (after some
+trigonometric manipulation). Then, the estimates $\hat{a}_l$ and
+$\hat{b}_l$ are passed into a decision maker, which uses a
+nearest-neighbour rule to find the most likely known amplitude
+level and decode it into a group of bits. These bits are then
+multiplexed together using a commutator, forming the reconstructed
+version of $d[m]$, $\hat{d}[m]$.
+
+\begin{description}
+    \item[{\bf Question \arabic{questioncnt}\stepcounter{questioncnt}:}]
+    Prove that Eqs.~(\ref{a_k_est}) and (\ref{b_k_est}) are true. What are the exceptions
+    for the carrier frequencies for perfect recovery under ideal conditions? Why is $k$ is constrained to be
+    below $N$?
+\end{description}
+
+\begin{description}
+    \item[{\bf Matlab Task \arabic{matlabcnt}\stepcounter{matlabcnt}:}]
+    Implement the rectangular QAM demodulator and decision maker,
+    as shown in Figure~\ref{qam_demod}, given an arbitrary
+    $\omega_k$. Test the cascade of the QAM modulator and
+    demodulator to see if the input is completely recovered at the
+    output.
+\end{description}
+
+
+We have so far dealt with modulation and demodulation in an ideal
+setting. Thus, one should expect that $\hat{d}_n=d_n$ with
+probability of 1. However, in the next subsection we will examine
+a physical phenomenon that distorts the transmitted signal,
+resulting in transmission errors.
+
+
+\subsection{Noise}\label{noisesubsection}
+
+By definition, {\it noise} is an undesirable disturbance
+accompanying the received signal that may distort the information
+carried by the signal. Noise can be originate from human-made and
+natural sources, such as thermal noise due to the thermal
+agitation of electrons in conductors, such as the transmission
+lines or antennas.
+
+The combination of such sources of noise is known to have a
+Gaussian distribution, as shown in Figure~\ref{awgn_hist}. A
+histogram of zero-mean Gaussian noise with a variance of
+$\sigma_n^2=0.25$ is shown, with the corresponding continuous
+probability density function (pdf) superimposed on it. The
+continuous Gaussian pdf is defined as
+\begin{equation}\label{gaussian_pdf}
+f_X(x)=\frac{1}{\sqrt{2\pi\sigma_n^2}}e^{-\frac{(x-\mu_n)^2}{2\sigma_n^2}}
+\end{equation}
+where $\mu_n$ and $\sigma_n^2$ are the mean and variance.
+
+In this work, we will also make the assumption that the noise
+introduced by the channel is {\it white}, which means that the
+noise has frequency content that is approximately flat, as shown
+in Figure~\ref{awgn_psd} for the case of zero-mean white Gaussian
+Noise with a variance of $\sigma_n^2=0.25$. Although in reality
+this assumption may not hold in certain cases, it does help
+simplify the process of demodulation.
+\begin{figure}[t]
+\begin{center}
+\subfigure[Histogram of AWGN superimposed on the probability
+density function for a Gaussian random variable of
+N(0,0.25)]{\label{awgn_hist}\includegraphics{images/f5.eps}}\goodgap
+\subfigure[Power spectral density of AWGN with
+N(0,0.25)]{\label{awgn_psd}\includegraphics{images/f6.eps}}
+\caption{Time and frequency domain properties of AWGN}
+\end{center}
+\end{figure}
+
+Thus, when noise is added to the transmitted signal, the receiver
+has to make a decision on what has been transmitted based on the
+received signal. Usually this is accomplished via a ``nearest
+neighbour'' rule with a known set of symbols. However, if a large
+amount of noise is added to the signal, there is a possibility
+that the received symbol might be shifted closer to a symbol other
+than the correct one, resulting in an error. As seen,
+Figures~\ref{4qam_little noise}, \ref{4qam_moderate_noise}, and
+\ref{4qam_heavy_noise}, where additive white Gaussian noise is
+included with the signal, it is readily observable that as the
+noise power increases, the constellation points become fuzzy until
+they begin overlapping with each other. It is at this point that
+the system will begin to experience errors.
+\begin{figure}[t]
+\begin{center}
+\subfigure[AWGN N(0,0.00001)]{\label{4qam_little noise}\includegraphics{images/f4a.eps}}\goodgap \subfigure[AWGN N(0,0.01)]{\label{4qam_moderate_noise}\includegraphics{images/f4b.eps}}\\
+\subfigure[AWGN
+N(0,0.25)]{\label{4qam_heavy_noise}\includegraphics{images/f4c.eps}}
+\caption{16-QAM signal constellations with varying amounts of
+noise}
+\end{center}
+\end{figure}
+
+\begin{description}
+    \item[{\bf Matlab Task \arabic{matlabcnt}\stepcounter{matlabcnt}:}]
+    Implement an AWGN generator that accepts as inputs: the
+    variance $\sigma^2$, the mean $\mu$, and the number of random
+    points $R$. Verify that it works by creating a histogram of
+    its output and compare against the Gaussian pdf as described
+    by Eq.~(\ref{gaussian_pdf}).
+\end{description}
+
+
+
+\subsection{Probability of Bit Error}
+
+The introduction of noise, which is a stochastic signal, to the
+transmitted signal means that the overall received signal is also
+stochastic. Thus, transmitting the same information over and over
+again may yield different results each time, assuming the that the
+same modulation scheme and receiver design are employed.
+
+In order to quantify the performance of a particular system set-up
+(e.g. modulation scheme, receiver design, etc...), many use the
+ratio between the number of bit errors that occur and the total
+number of bits transmitted. This ratio is an estimate of the {\it
+Probability of Bit Error} or {\it Bit Error Rate} (BER) and is
+dependent on the noise variance, the modulation scheme employed,
+and the receiver design.
+\begin{figure}[t]
+  \centering
+  \includegraphics{images/f7.eps}\\
+  \caption{Probability of Bit Error curves for 4-QAM, rectangular 16-QAM, and rectangular 64-QAM}\label{ber_curves}
+\end{figure}
+
+In Figure~\ref{ber_curves}, the BER curves for rectangular 4-QAM,
+16-QAM, and 64-QAM are presented when additive white Gaussian
+noise (AWGN) is introduced. Notice how as the signal-to-noise
+ratio (SNR) increases (noise power decreases), the probability of
+bit error decreases, as expected. Note that the SNR is the ratio
+of symbol energy to the noise energy, namely
+\begin{equation}
+\gamma=\frac{E_s}{\sigma_n^2}.
+\end{equation}
+
+\begin{description}
+    \item[{\bf Matlab Task \arabic{matlabcnt}\stepcounter{matlabcnt}:}]
+    Verify that rectangular QAM modulator/demodulator works by
+    introducing the appropriate amount of noise and comparing the
+    resulting BER with the BER in Figure~\ref{ber_curves} at
+    $10^{-3}$. What values of SNR did you employ?
+\end{description}
+
+
+
+\section{The OFDM Principle}
+\begin{figure}[ht] \centering
+\includegraphics{images/oqam_sys.eps}\\
+\caption{Transmitter of an orthogonally multiplexed QAM
+system}\label{oqamsys}
+\end{figure}
+
+As we have seen thus far, signals can be transmitted on single
+carrier frequency. For instance, Eq.~(\ref{basic_qam_defn})
+modulates to the carrier frequency $\omega_k$. However, the
+transmitted signal may only use up a small portion of the total
+available bandwidth. To increase bandwidth efficiency and
+throughput, why not send additional QAM signals in other portions
+of the unused bandwidth simultaneously. An example of this is
+shown in Figure~\ref{oqamsys}, where we have taken the QAM
+modulator of Figure~\ref{qam_mod} and put several of them in
+parallel, each with a different carrier frequency. The data for
+each modulator came from portions of a high speed bit stream. This
+is principle behind multicarrier modulation.
+
+\begin{description}
+    \item[{\bf Question \arabic{questioncnt}\stepcounter{questioncnt}:}]
+    Draw a schematic for an orthogonally multiplexed QAM
+    demodulator. Show that the subcarriers of the orthogonally multiplexed
+    QAM system are orthogonal.
+\end{description}
+
+
+\begin{description}
+    \item[{\bf Matlab Task \arabic{matlabcnt}\stepcounter{matlabcnt}:}]
+    Implement Figure~\ref{oqamsys} and its corresponding receiver.
+    Verify that it works under ideal conditions. What carrier
+    frequencies did you not use in the implementation?
+\end{description}
+
+
+Orthogonal Frequency Division Multiplexing (OFDM) is an efficient
+type of multicarrier modulation, which employs the discrete
+Fourier transform (DFT) and inverse DFT (IDFT) to modulate and
+demodulate the data streams. The set-up of an OFDM system is
+presented in Figure~\ref{ofdmsys}. A high-speed digital input,
+$x[m]$, is demultiplexed into $N$ subcarriers using a commutator.
+The data on each subcarrier is then modulated into an $M$-QAM
+symbol, which maps a group of $\log_2(M)$ bits at a time. Unlike
+the baseband representation of Eq.~(\ref{basic_qam_defn}), for
+subcarrier $k$ we will rearrange $a^k$ and $b^k$ into real and
+imaginary components such that the output of the modulator is
+$p^k=a^k+jb^k$. In order for the output of the IDFT block to be
+real, given $N$ subcarriers we must use a $2N$-point IDFT, where
+terminals $k=0$ and $k=N$ are ``don't care'' inputs. For the
+subcarriers $1\le{k}\le{N-1}$, the inputs are $p^k=a^k+jb^k$,
+while for the subcarriers $N+1\le{k}\le{2N-1}$, the inputs are
+$p^{k}=a^{2N-k}+jb^{2N-k}$.
+
+\begin{description}
+    \item[{\bf Question \arabic{questioncnt}\stepcounter{questioncnt}:}]
+    Why are $k=0$ and $k=N$ ``don't care'' inputs?
+\end{description}
+
+The IDFT is then performed, yielding
+\begin{equation}
+s[n]=\frac{1}{2N}\sum\limits_{k=0}^{2N-1}p^ke^{j(2\pi{nk}/2N)}
+\end{equation}
+which results in the data being transmitted on several
+subchannels. Figure~\ref{freq_resp_ofdm} shows the subchannels on
+which the data is being transmitted on. The modulation to these
+subchannels is achieved since each data stream is multiplied by a
+$\sin(Nx)/\sin(x)$, several of which are shown in
+Figure~\ref{ofdm_tones}.
+
+The subcarriers are then multiplexed together using a commutator,
+forming the signal $y[n]$, and transmitted to the receiver. Once
+at the receiver, the signal is demultiplexed into $2N$ subcarriers
+of data, $\hat{s}[n]$, using a commutator and a $2N$-point DFT,
+defined as
+\begin{equation}
+\bar{p}^k=\sum\limits_{n=0}^{2N-1}\hat{s}[n]e^{-j(2\pi{nk}/2N)},
+\end{equation}
+is applied to the inputs, yielding the estimates of $p^k$,
+$\bar{p}^k$. The output, $\hat{p}^k$, then passed through a
+demodulator and the result multiplexed together using a
+commutator, yielding the reconstructed high-speed bit stream,
+$\hat{x}[m]$.
+\begin{figure}[h]
+\centering
+\includegraphics{images/ofdm_system.eps}\\
+\caption{Overall schematic of an Orthogonal Frequency Division
+Multiplexing System}\label{ofdmsys}
+\end{figure}
+
+
+\begin{figure}[h]
+\begin{center}
+\subfigure[Frequency response of OFDM
+subcarriers]{\label{freq_resp_ofdm}\includegraphics{images/f8.eps}}\goodgap
+\subfigure[Real parts of the OFDM basis functions for subcarriers
+1, 2, 4, and
+7]{\label{ofdm_tones}\includegraphics[width=2.5in,keepaspectratio=true]{images/f9.eps}}
+\caption{Characteristics of Orthogonal Frequency Division
+Multiplexing}
+\end{center}
+\end{figure}
+
+\begin{description}
+    \item[{\bf Question \arabic{questioncnt}\stepcounter{questioncnt}:}]
+    Show that the OFDM configuration and the orthogonally
+    multiplexed QAM system are identical. Which of the two
+    implementations is faster if the OFDM system employs FFTs?
+    Prove it by comparing the number of operations.
+\end{description}
+
+\begin{description}
+    \item[{\bf Matlab Task \arabic{matlabcnt}\stepcounter{matlabcnt}:}]
+    Implement Figure~\ref{ofdmsys} using IFFT and FFT blocks.
+\end{description}
+
+
+
+\section{Channel Environment}
+
+Until now, we have only considered an OFDM system operating under
+ideal conditions (i.e. the transmitter is connected directly to
+the receiver without any introduced distortion). We have already
+dealt with the concept of noise in Section~\ref{noisesubsection}.
+Now we will cover channel distortion due to dispersive propagation
+and how it is compensated for in OFDM system.
+
+
+\subsection{Dispersive Propagation}
+
+From our high school physics courses, we learned about wave
+propagation and how they combine constructively and destructively.
+The exact same principles hold in high speed data transmission.
+
+For example, in a wireless communication system, the transmitter
+emanates radiation in all directions (unless the antenna is
+``directional'', in which case, the energy is focused at a
+particular azimuth). In an open environment, like a barren farm
+field, the energy would continue to propagate until some of it
+reaches the receiver antenna. As for the rest of the energy, it
+continues on until it dissipates.
+
+In an indoor environment, as depicted in
+Figure~\ref{room_response}, the situation is different. The
+line-of-sight component (if it exists), $p_1$, arrives at the
+receiver antenna first, just like in the open field case. However,
+the rest of the energy does not simply dissipate. Rather, the
+energy is reflected by the walls and other objects in the room.
+Some of these reflections, such as $p_2$ and $p_3$, will make
+their way to the receiver antenna, although not with the same
+phase or amplitude. All these received components are functions of
+several parameters, including their overall distance between the
+transmitter and receiver antennas as well as the number of
+reflections. At the receiver, these components are just copies of
+the same transmitted signal, but with different arrival times,
+amplitudes, and phases. Therefore, one can view the channel as an
+impulse response that is being convolved with the transmitted
+signal. In the open field case, the {\it channel impulse response}
+(CIR) would be a delta, since no other copies would be received by
+the receiver antenna. On the other hand, an indoor environment
+would have a several copies intercepted at the receiver antenna,
+an thus its CIR would be similar to the example in
+Figure~\ref{cir_diagram}. The corresponding frequency response of
+the example CIR is shown in Figure~\ref{cir_freq_resp}.
+
+In an xDSL environment, the same principles can be applied to the
+wireline environment. The transmitted signal is sent across a
+network of telephone wires, with numerous junctions, bridging
+taps, and connections to other customer appliances (e.g.
+telephones, xDSL modems). If the impedances are not matched well
+in the network, reflections occur and will reach the devices
+connected to the network, including the desired receiver.
+
+With the introduction of the CIR, new problems arise in our
+implementation which need to be addressed. In
+Section~\ref{ofdmcp}, we will look at how to undo the smearing
+effect the CIR has on the transmitted signal. In
+Section~\ref{sceq}, we will look at one technique employed
+extensively in OFDM which inverts the CIR effects in the frequency
+domain.
+
+\begin{figure}[h]
+\begin{center}
+\subfigure[Impulse
+response]{\label{cir_diagram}\includegraphics{images/f10.eps}}\goodgap
+\subfigure[Frequency
+response]{\label{cir_freq_resp}\includegraphics{images/f11.eps}}\\
+\subfigure[The process by which dispersive propagation
+arises]{\label{room_response}\includegraphics{images/room.eps}}
+\caption{Example of a channel response due to dispersive
+propagation}
+\end{center}
+\end{figure}
+
+\begin{description}
+    \item[{\bf Matlab Task \arabic{matlabcnt}\stepcounter{matlabcnt}:}]
+    Implement the channel filter, given as an input the channel
+    impulse response, and add the noise generator.
+\end{description}
+
+
+
+\subsection{OFDM with Cyclic Prefix}\label{ofdmcp}
+
+The CIR can be modelled as a finite impulse response filter that
+is convolved with a sampled version of the transmitted signal. As
+a result, the CIR smears past samples onto current samples, which
+are smeared onto future samples. The effect of this smearing
+causes distortion of the transmitted signal, increasing the
+aggregate BER of the system and resulting in a loss in
+performance.
+
+Although equalizers can be designed to undo the effects of the
+channel, there is a trade-off between complexity and distortion
+minimization that is associated with the choice of an equalizer.
+In particular, the distortion due to the smearing of a previous
+OFDM symbol onto a successive symbol is a difficult problem. One
+simple solution is to put a few ``dummy'' samples between the
+symbols in order to capture the intersymbol smearing effect. The
+most popular choice for these $K$ dummy samples are the last $K$
+samples of the current OFDM symbol. The dummy samples in this case
+is known as a {\it cyclic prefix}, as shown in
+Figure~\ref{cyclicprefix_1}.
+
+Therefore, when the OFDM symbols with cyclic prefixes are passed
+through the channel, the smearing from the previous symbols are
+captured by the cyclic prefixes, as shown in
+Figure~\ref{cyclicprefix_2}. As a result, the symbols only
+experience smearing of samples from within their own symbol.
+
+At the receiver, the cyclic prefix is removed, as shown in
+Figure~\ref{cyclicprefix_3}, and the OFDM symbols proceed with
+demodulation and equalization.
+
+Despite the usefulness of the cyclic prefix, there are several
+disadvantages. First, the length of the cyclic prefix must be
+sufficient to capture the effects of the CIR. If not, the cyclic
+prefix fail to prevent distortion introduced from other symbols.
+The second disadvantage is the amount of overhead introduced by
+the cyclic prefix. By adding more samples to buffer the symbols,
+we must send more information across the channel to the receiver.
+This means to get the same throughput as a system without the
+cyclic prefix, we must transmit at a higher data rate.
+
+\begin{figure}[h]
+\begin{center}
+\subfigure[Add cyclic prefix to an OFDM symbol]{\label{cyclicprefix_1}\includegraphics[width=4.5in,keepaspectratio=true]{images/cyclicprefix_1.eps}}\\
+\subfigure[Smearing by channel h(t) from previous symbol into cyclic prefix]{\label{cyclicprefix_2}\includegraphics[width=4.5in,keepaspectratio=true]{images/cyclicprefix_2.eps}}\\
+\subfigure[Removal of cyclic
+prefix]{\label{cyclicprefix_3}\includegraphics[width=4.5in,keepaspectratio=true]{images/cyclicprefix_3.eps}}
+\caption{The process of adding, smearing capturing, and removal of
+a cyclic prefix}
+\end{center}
+\end{figure}
+
+\begin{description}
+    \item[{\bf Matlab Task \arabic{matlabcnt}\stepcounter{matlabcnt}:}]
+    Implement the cyclic prefix add and remove blocks of the OFDM
+    system.
+\end{description}
+
+
+\section{Frequency Domain Equalization}\label{sceq}
+
+Once the cyclic prefix has taken care of the intersymbol
+interference, the received signal has the DFT applied to it.
+However, the smearing between samples still exist and must be
+compensated for. This is achieved by multiplying the subcarriers
+with the inverse of the channel frequency response.
+
+Referring to Figures~\ref{ofdm_tones} and \ref{cir_freq_resp}, if
+we multiply the two figures together, we notice that each of the
+subcarriers have a different gain. Therefore, what must be done is
+to multiply each subcarrier with a gain that is an inverse to the
+channel frequency response acting on that subcarrier. This is the
+principle behind {\it per tone equalization}. Knowing what the
+channel frequency gains are at the different subcarriers, one can
+use them to reverse the distortion caused by the channel by
+dividing the subcarriers with them. For instance, if the system
+has 64 subcarriers centered at frequencies $\omega_k=2\pi{k}/64$,
+$k=0,\ldots,63$, then one would take the CIR $h[n]$ and take its
+64-point FFT, resulting with the frequency response $H[k]$,
+$k=0,\ldots,63$. Then, to reverse the effect of the channel on
+each subcarrier, simply take the inverse of the channel frequency
+response point corresponding to that subcarrier,
+\begin{equation}
+W[k]=\frac{1}{H[k]}
+\end{equation}
+and multiply the subcarrier with it.
+
+\begin{description}
+    \item[{\bf Matlab Task \arabic{matlabcnt}\stepcounter{matlabcnt}:}]
+    Implement the per tone equalization block. How was the complex gain chosen?
+\end{description}
+
+
+
+\section{Bit Allocation}
+
+Most OFDM systems use the same signal constellation across all
+subcarriers, as shown in Figure~\ref{ccommutator}, where the
+commutator allocates bit groupings of the same size to each
+subcarrier. However, their overall error probability is dominated
+by the subcarriers with the worst performance. To improve
+performance, adaptive bit allocation can be employed, where the
+signal constellation size distribution across the subcarriers
+varies according to the measured signal-to-noise ratio (SNR)
+values, as shown in Figure~\ref{vcommutator}, where the commutator
+allocates bit groupings of different sizes. In extreme situations,
+some subcarriers can be ``turned off'' or {\it nulled} if the
+subcarrier SNR values are poor.
+
+Given that both the transmitter and receiver possess knowledge of
+the subcarrier SNR levels, one is able to determine the subcarrier
+BER values (see Figure~\ref{ber_curves}). Since the subcarrier BER
+values are dependent on the choice of modulation used for a given
+SNR value, we can vary the modulation scheme used in each
+subcarrier in order to change the subcarrier BER value. Larger
+signal constellations (e.g. 64-QAM) require larger SNR values in
+order to reach the same BER values as smaller constellations (e.g.
+4-QAM) which have smaller SNR values.
+
+We will simply allocate bits according to
+\begin{equation}\label{shannon}
+b_i=\log_2\Big({1+\frac{\gamma_i}{\Gamma}}\Big),
+\end{equation}
+where $\gamma_i$ is the SNR of subcarrier $i$. Assuming equal
+energy across all used subcarriers, the SNR Gap $\Gamma$ is
+adjusted until the target bit rate is exceeded.
+
+
+
+\begin{figure}[h]
+\begin{center}
+\subfigure[Constant-Rate
+Commutator]{\label{ccommutator}\includegraphics{images/commutator_conventional.eps}}\goodgap
+\subfigure[Variable-Rate
+Commutator]{\label{vcommutator}\includegraphics{images/commutator_adaptive.eps}}
+\caption{Comparison of variable and constant rate commutators with
+equivalent total rate}
+\end{center}
+\end{figure}
+
+
+\begin{description}
+    \item[{\bf Question \arabic{questioncnt}\stepcounter{questioncnt}:}]
+    Find the expression for the subcarrier SNR, given the channel
+    impulse response, the subcarrier transmit power levels, and
+    the noise variance $\sigma^2$.
+\end{description}
+
+\begin{description}
+    \item[{\bf Matlab Task \arabic{matlabcnt}\stepcounter{matlabcnt}:}]
+    Implement the bit allocation scheme as per Eq.~(\ref{shannon}).
+\end{description}
+
+
+
+\end{document}
